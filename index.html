@@ -829,41 +829,37 @@ const ZenOS = {
                 else { if(a) a.volume=ZenOS.state.vol; ZenOS.UI.toast("Unmuted"); }
             }
         },
+// ZenOS.Apps.Coach nesnesinin eksiksiz ve çalışan hali
 Coach: {
-    // History storage, initialized with a System instruction for context
-    chatHistory: [{ role: "system", parts: [{ text: "You are the Zen Coach, a helpful, concise, and professional AI assistant focused on productivity and personal development. Always keep your answers brief." }] }],
+    // Mesaj geçmişi ve sistem talimatı
+    chatHistory: [{ role: "system", parts: [{ text: "Sen Zen Coach'sun. Berk'e (kullanıcı) üretkenlik, görev yönetimi ve kişisel gelişim konularında kısa, öz ve profesyonel tavsiyeler ver." }] }],
 
-    init: () => {
-        // 1. Setup ENTER listener for chat input
+    // Uygulama başlatıldığında çalışır
+    init: function() {
         const input = document.getElementById('coachInput');
         if (input) {
+            // ENTER tuşuna basıldığında gönder
             input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') ZenOS.Apps.Coach.sendQuery();
+                if (e.key === 'Enter') this.sendQuery();
             });
         }
         
-        // 2. Initialize welcome message dynamically on load
+        // Hoş geldiniz mesajı
         const chatHistoryEl = document.getElementById('coachChatHistory');
-        // FIX: Sadece sohbet penceresi yüklendiğinde ve geçmiş boşsa mesajı ekle.
-        if (chatHistoryEl && ZenOS.Apps.Coach.chatHistory.length === 1 && chatHistoryEl.children.length === 0) {
-             ZenOS.Apps.Coach.type("Zen Coach System activated. Ask me anything about productivity, tasks, or analysis.");
+        if (chatHistoryEl && this.chatHistory.length === 1 && chatHistoryEl.children.length === 0) {
+             this.type("Zen Coach Sistemi aktif. Berk, bugün neyi başarmak istiyorsun?");
         }
     },
 
-    // Simulates the typing effect for AI responses
-    type: (txt) => {
+    // AI'nın daktilo efektiyle yazmasını sağlar
+    type: function(txt) {
         const chatHistoryEl = document.getElementById('coachChatHistory');
+        if (!chatHistoryEl) return;
+
         const aiMsgDiv = document.createElement('div');
-        aiMsgDiv.className = 'ai-msg';
-        
-        if (chatHistoryEl) {
-            chatHistoryEl.appendChild(aiMsgDiv);
-            aiMsgDiv.scrollIntoView({ behavior: 'smooth' });
-        } else {
-             // Konsola hata bas, bu bir DOM hatasıdır
-             console.error("Coach: Chat history element not found (type).");
-             return; 
-        }
+        aiMsgDiv.className = 'ai-msg model'; // CSS ile uyumlu sınıf
+        chatHistoryEl.appendChild(aiMsgDiv);
+        aiMsgDiv.scrollIntoView({ behavior: 'smooth' });
 
         aiMsgDiv.classList.add('typing-cursor');
         let i = 0;
@@ -874,125 +870,87 @@ Coach: {
                 clearInterval(t);
                 aiMsgDiv.classList.remove('typing-cursor');
             }
-        }, 30);
+        }, 25);
     },
 
-    // Adds user query to the chat history display
-    addUserMessage: (query) => {
+    // Kullanıcının mesajını ekrana ekler
+    addUserMessage: function(query) {
         const chatHistoryEl = document.getElementById('coachChatHistory');
+        if (!chatHistoryEl) return;
+
         const userMsgDiv = document.createElement('div');
-        userMsgDiv.className = 'ai-msg';
-        userMsgDiv.style.background = 'rgba(255,255,255,0.1)';
-        userMsgDiv.style.borderLeft = '3px solid #ccc';
-        userMsgDiv.innerText = `You: ${query}`;
-        
-        if (chatHistoryEl) {
-            chatHistoryEl.appendChild(userMsgDiv);
-            userMsgDiv.scrollIntoView({ behavior: 'smooth' });
-        } else {
-             console.error("Coach: Chat history element not found (addUserMessage).");
-        }
+        userMsgDiv.className = 'ai-msg user'; // CSS ile uyumlu sınıf
+        userMsgDiv.innerText = `Sen: ${query}`;
+        chatHistoryEl.appendChild(userMsgDiv);
+        userMsgDiv.scrollIntoView({ behavior: 'smooth' });
     },
 
-    // Handles sending the user query to the Gemini Pro model
-    sendQuery: async () => {
-        if (!ZenOS.state.user) return ZenOS.UI.toast("Login Required for AI Coach");
-        if (API_KEY === "") return ZenOS.UI.toast("API Key Missing! Cannot connect to Zen Coach core.");
-
+    // Mesajı API'ye gönderir
+    sendQuery: async function() {
         const inputEl = document.getElementById('coachInput');
+        if (!inputEl) return;
+
         const userQuery = inputEl.value.trim();
         if (!userQuery) return;
 
-        ZenOS.Apps.Coach.addUserMessage(userQuery);
+        // 1. Kullanıcı mesajını göster ve kutuyu temizle
+        this.addUserMessage(userQuery);
         inputEl.value = '';
         inputEl.disabled = true;
 
-        // Display waiting message
-        const waitingMsg = 'Zen Coach is thinking...';
-        ZenOS.Apps.Coach.type(waitingMsg);
+        // 2. Bekleme mesajı
+        const waitingMsg = 'Zen Coach düşünüyor...';
+        this.type(waitingMsg);
         
-        // 1. Prepare Payload with full history for context
+        // 3. Payload hazırlığı
         const payload = {
-            contents: ZenOS.Apps.Coach.chatHistory.concat([{ role: "user", parts: [{ text: userQuery }] }]),
+            contents: this.chatHistory.concat([{ role: "user", parts: [{ text: userQuery }] }]),
         };
 
-        // Use the Pro model for general chat
-        const MODEL_NAME = 'gemini-2.5-pro'; 
+        // Daha stabil olan Flash modelini kullanıyoruz (429 hatalarını azaltmak için)
+        const MODEL_NAME = 'gemini-1.5-flash'; 
         const apiUrl = `${API_URL_BASE}${MODEL_NAME}:generateContent?key=${API_KEY}`;
         
         try {
-            const result = await retryFetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || "Error: Received empty response from AI core.";
+            const result = await retryFetch(apiUrl, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload) 
+            });
 
-            // 2. Remove waiting message and display response
+            const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || "Hata: Yanıt boş döndü.";
+
+            // 4. Bekleme mesajını sil ve gerçek yanıtı yaz
             const history = document.getElementById('coachChatHistory');
-            // Remove the 'thinking' message (the last child)
-            if (history && history.lastElementChild && history.lastElementChild.innerText === waitingMsg) {
+            if (history && history.lastElementChild && history.lastElementChild.innerText.includes('düşünüyor')) {
                 history.removeChild(history.lastElementChild); 
             }
-            ZenOS.Apps.Coach.type(aiResponse);
+            this.type(aiResponse);
 
-            // 3. Update history for subsequent requests
-            ZenOS.Apps.Coach.chatHistory.push({ role: "user", parts: [{ text: userQuery }] });
-            ZenOS.Apps.Coach.chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+            // 5. Hafızayı güncelle
+            this.chatHistory.push({ role: "user", parts: [{ text: userQuery }] });
+            this.chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
             
         } catch (e) {
-            ZenOS.Apps.Terminal.print(`AI Coach ERROR: ${e.message}`, 'error');
-            ZenOS.Apps.Coach.type(`ERROR: Could not connect to AI service. (Details: ${e.message.slice(0, 50)}...)`);
+            console.error("API Hatası:", e);
+            // Hata durumunda "düşünüyor" mesajını temizle
+            const history = document.getElementById('coachChatHistory');
+            if (history && history.lastElementChild && history.lastElementChild.innerText.includes('düşünüyor')) {
+                history.removeChild(history.lastElementChild); 
+            }
+            this.type("Hata: Şu an yanıt veremiyorum. API kotası dolmuş olabilir (429). Lütfen bir dakika sonra tekrar dene.");
         } finally {
             inputEl.disabled = false;
             inputEl.focus();
         }
     },
 
-    // Provides real, actionable advice based on productivity metrics
-    analyze: () => {
-        if (!ZenOS.state.user) return ZenOS.UI.toast("Login Required");
-        if (API_KEY === "") return ZenOS.UI.toast("API Key Missing!");
-        
-        const data = ZenOS.DB.user();
-        const k = data.kanban;
-        const s = data.stats;
-
-        // Build a detailed prompt based on user data
-        let analysisPrompt = "Analyze my current productivity status based on the following data and provide one concise, actionable tip:\n";
-        analysisPrompt += `- Total Focus Sessions Completed: ${s.s}\n`;
-        analysisPrompt += `- Total Minutes Focused: ${s.m}\n`;
-        analysisPrompt += `- Kanban Tasks: ${k.todo.length} TODO, ${k.doing.length} DOING, ${k.done.length} DONE.\n`;
-        analysisPrompt += `Based on this, what is the single most important, actionable productivity tip I should follow right now?`;
-        
-        ZenOS.Apps.Coach.addUserMessage('Analyze my current productivity metrics.');
-        
-        ZenOS.Apps.Coach.sendCustomQuery(analysisPrompt);
-    },
-
-    // Helper for analysis call (uses Pro model for reasoning)
-    sendCustomQuery: async (customPrompt) => {
-        const waitingMsg = 'Analyzing metrics...';
-        ZenOS.Apps.Coach.type(waitingMsg);
-
-        const payload = {
-            contents: [{ role: "user", parts: [{ text: customPrompt }] }],
-            systemInstruction: { parts: [{ text: "Act as a highly analytical productivity coach. Do not mention the raw data, only provide a single, actionable, and concise tip based on the provided metrics. Start with 'Coach Tip:'" }] },
-        };
-
-        // Use the Pro model for complex analysis
-        const MODEL_NAME = 'gemini-2.5-pro'; 
-        const apiUrl = `${API_URL_BASE}${MODEL_NAME}:generateContent?key=${API_KEY}`;
-
-        try {
-            const result = await retryFetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || "Error: Analysis failed.";
-
-            const history = document.getElementById('coachChatHistory');
-            // Remove the 'thinking' message
-            if (history && history.lastElementChild && history.lastElementChild.innerText === waitingMsg) {
-                history.removeChild(history.lastElementChild);
-            }
-            ZenOS.Apps.Coach.type(aiResponse);
-            
-        } catch (e) {
-            ZenOS.Apps.Coach.type(`ERROR: Failed to run analysis. (Network/API Key issue)`);
+    // Verimlilik analizi butonu
+    analyze: function() {
+        const inputEl = document.getElementById('coachInput');
+        if (inputEl) {
+            inputEl.value = "Mevcut verimlilik durumumu analiz et ve Berk için bir tavsiye ver.";
+            this.sendQuery();
         }
     }
 },
