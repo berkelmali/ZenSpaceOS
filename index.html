@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZenSpace OS | Premium OS </title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        /* =========================================
+           1. DESIGN SYSTEM (THEME ENGINE)
+           ========================================= */
+        :root {
+            --bg-void: #000000;
+            --surface-1: rgba(18, 18, 24, 0.9);
+            --surface-border: rgba(255, 255, 255, 0.08);
+            --surface-highlight: rgba(255, 255, 255, 0.15);
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --text-main: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.6);
+            --status-err: #ef4444;
+            --font-ui: 'Inter', sans-serif;
+            --font-tech: 'Rajdhani', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --z-video: 0; --z-canvas: 1; --z-desktop: 10; --z-window: 100; --z-dock: 1000; --z-modal: 5000; --z-boot: 9999;
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; outline:none; user-select:none; }
+        body { background: var(--bg-void); color: var(--text-main); font-family: var(--font-ui); overflow: hidden; height: 100vh; }
+        input, textarea { user-select: text; }
+
+        /* =========================================
+           2. BACKGROUND & LAYERS
+           ========================================= */
+        .layer-video {
+            position: absolute; inset: 0; z-index: var(--z-video);
+            background: linear-gradient(135deg, #020617 0%, #1e1b4b 50%, #000000 100%);
+        }
+        .bg-vid {
+            position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+            opacity: 0; transition: opacity 2s ease, transform 15s ease-out; transform: scale(1.05);
+            filter: brightness(0.6) contrast(1.1);
+        }
+        .bg-vid.active { opacity: 1; transform: scale(1); }
+
+        #particle-canvas { position: absolute; inset: 0; z-index: var(--z-canvas); pointer-events: none; opacity: 0.4; mix-blend-mode: screen; }
+
+        .layer-overlay {
+            position: absolute; inset: 0; z-index: 2;
+            background: radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 100%);
+            backdrop-filter: blur(10px); pointer-events: none; transition: 0.5s;
+        }
+        
+        body.mode-cinema .layer-overlay { backdrop-filter: none; opacity: 0; }
+        body.mode-cinema .desktop-layer { opacity: 0; pointer-events: none; transform: scale(1.05); transition: 0.5s; }
+        body.mode-cinema { cursor: none; }
+
+        /* =========================================
+           3. UI COMPONENTS
+           ========================================= */
+        /* Boot Screen */
+        #boot-screen {
+            position: fixed; inset: 0; background: #000; z-index: var(--z-boot);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-family: var(--font-mono); color: var(--accent);
+        }
+        .boot-circle {
+            width: 60px; height: 60px; border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: var(--accent); border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Auth Screen */
+        #auth-overlay {
+            position: fixed; inset: 0; z-index: var(--z-modal);
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(30px);
+            display: flex; justify-content: center; align-items: center;
+            transition: 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        #auth-overlay.hidden { transform: translateY(-100%) scale(1.1); opacity: 0; pointer-events: none; }
+
+        .auth-card {
+            width: 420px; background: rgba(15, 15, 20, 0.95);
+            border: 1px solid var(--surface-border); border-radius: 24px;
+            padding: 40px; text-align: center; box-shadow: 0 40px 80px rgba(0,0,0,0.8);
+            position: relative; overflow: hidden;
+        }
+        .auth-card::before { content:''; position:absolute; top:0; left:0; width:100%; height:2px; background:linear-gradient(90deg, transparent, var(--accent), transparent); }
+
+        .auth-input {
+            width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--surface-border);
+            padding: 14px 14px 14px 45px; border-radius: 12px; color: #fff; margin-bottom: 12px;
+            font-family: var(--font-ui); transition: 0.3s;
+        }
+        .auth-input:focus { border-color: var(--accent); background: rgba(255,255,255,0.08); }
+        .input-wrapper { position: relative; }
+        .input-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-65%); color: var(--text-muted); }
+
+        .btn-primary {
+            width: 100%; padding: 14px; background: #fff; color: #000; border: none;
+            border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s;
+            font-family: var(--font-tech); text-transform: uppercase; letter-spacing: 1px;
+            margin-top: 10px;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255,255,255,0.2); }
+
+        .auth-alert {
+            background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #ffaaaa;
+            padding: 10px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem;
+            display: none; align-items: center; gap: 8px; animation: shake 0.4s;
+        }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+
+        /* =========================================
+           4. DESKTOP & WINDOWS
+           ========================================= */
+        .desktop-layer { position: absolute; inset: 0; z-index: var(--z-desktop); pointer-events: none; transition: 0.5s; }
+        
+        .desktop-icons {
+            position: absolute; top: 40px; left: 40px; 
+            display: flex; 
+            flex-direction: row; /* For aligning icons side-by-side */
+            flex-wrap: wrap; /* For wrapping icons if space is limited */
+            align-items: flex-start; /* Start from the top */
+            gap: 25px; 
+            pointer-events: auto;
+            max-width: 90%; 
+        }
+        
+        .d-icon {
+            width: 80px; height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 16px; cursor: pointer; transition: 0.2s; color: var(--text-muted); gap: 5px;
+        }
+        .d-icon:hover { background: rgba(255,255,255,0.08); color: #fff; backdrop-filter: blur(5px); }
+        .d-icon i { font-size: 2.2rem; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5)); }
+        .d-icon span { font-size: 0.75rem; font-weight: 500; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+
+        .window {
+            position: absolute; background: var(--surface-1);
+            border: 1px solid var(--surface-border); border-radius: 20px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            display: flex; flex-direction: column; overflow: hidden;
+            opacity: 0; transform: scale(0.95) translateY(20px);
+            transition: opacity 0.3s, transform 0.3s, width 0.2s, height 0.2s;
+            pointer-events: auto; min-width: 300px; min-height: 200px;
+        }
+        .window.open { opacity: 1; transform: scale(1) translateY(0); }
+        .window.minimized { opacity: 0; transform: scale(0.8) translateY(100px); pointer-events: none; }
+        .window.active { border-color: var(--surface-highlight); z-index: 200 !important; box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 40px 80px rgba(0,0,0,0.8); }
+
+        .win-bar {
+            height: 44px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--surface-border);
+            display: flex; align-items: center; justify-content: space-between; padding: 0 15px;
+            cursor: grab; user-select: none;
+        }
+        .win-bar:active { cursor: grabbing; }
+        .win-title { font-family: var(--font-tech); font-weight: 700; font-size: 0.9rem; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; display: flex; gap: 8px; align-items: center; }
+        .win-ctrls { display: flex; gap: 8px; }
+        .win-btn { width: 12px; height: 12px; border-radius: 50%; border:none; cursor: pointer; transition: 0.2s; }
+        .wb-cls { background: #ff5f56; } .wb-cls:hover { background: #ff3b30; }
+        .wb-min { background: #ffbd2e; } .wb-min:hover { background: #ff9500; }
+        .win-content { flex: 1; padding: 20px; overflow-y: auto; position: relative; }
+
+        /* =========================================
+           5. APP STYLES
+           ========================================= */
+        .timer-big { font-family: var(--font-mono); font-size: 3.5rem; font-weight: 700; text-align: center; margin: 10px 0; letter-spacing: -2px; }
+        .chip-grp { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; }
+        .chip { background: rgba(255,255,255,0.05); padding: 6px 12px; border-radius: 15px; font-size: 0.8rem; cursor: pointer; border: 1px solid transparent; transition: 0.2s; }
+        .chip:hover { border-color: #fff; }
+        .chip.active { background: var(--accent); color: #000; font-weight: 700; }
+        .act-btn { width: 100%; padding: 12px; background: #fff; color: #000; border-radius: 12px; font-weight: 700; cursor: pointer; border:none; font-family: var(--font-tech); text-transform: uppercase; letter-spacing: 1px; }
+        .act-btn:hover { transform: translateY(-2px); }
+
+        .kb-board { display: flex; gap: 10px; height: 100%; overflow-x: auto; }
+        .kb-col { flex: 1; background: rgba(255,255,255,0.02); border-radius: 10px; padding: 10px; min-width: 140px; display: flex; flex-direction: column; }
+        .kb-head { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .kb-list { flex: 1; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+        .kb-card { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; border: 1px solid transparent; position: relative; }
+        .kb-card:hover { border-color: var(--accent); background: rgba(255,255,255,0.08); }
+        .kb-del { position: absolute; right: 8px; top: 8px; color: #ff5f56; opacity: 0; transition: 0.2s; }
+        .kb-card:hover .kb-del { opacity: 1; }
+
+        .env-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .env-card { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; text-align: center; cursor: pointer; border: 1px solid transparent; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .env-card:hover { background: rgba(255,255,255,0.08); }
+        .env-card.active { background: #fff; color: #000; }
+        .vol-slider { width: 100%; height: 4px; -webkit-appearance: none; background: rgba(255,255,255,0.1); border-radius: 2px; }
+        .vol-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: #fff; border-radius: 50%; cursor: pointer; }
+
+        .ai-msg { font-size: 0.9rem; line-height: 1.5; color: #fff; min-height: 60px; margin-bottom: 15px; padding: 10px; background: rgba(59,130,246,0.1); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; }
+        .typing-cursor::after { content: '|'; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .term-bg { background: #0a0a0a; color: #2ed573; font-family: var(--font-mono); font-size: 0.85rem; padding: 0; }
+        .term-out { padding: 15px; height: calc(100% - 40px); overflow-y: auto; }
+        .term-in-row { display: flex; padding: 0 15px 15px 15px; align-items: center; }
+        .term-in { background: transparent; border: none; color: #fff; flex: 1; font-family: inherit; font-size: inherit; margin-left: 8px; }
+
+        .dock {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(15, 15, 20, 0.8); backdrop-filter: blur(20px);
+            border: 1px solid var(--surface-border); border-radius: 24px;
+            padding: 10px 20px; display: flex; gap: 15px; pointer-events: auto;
+            z-index: var(--z-dock); box-shadow: 0 20px 50px rgba(0,0,0,0.5); transition: 0.5s;
+        }
+        .dock-item {
+            width: 48px; height: 48px; border-radius: 12px; background: rgba(255,255,255,0.05);
+            display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+            color: var(--text-muted); cursor: pointer; transition: 0.2s; position: relative;
+        }
+        .dock-item:hover { background: rgba(255,255,255,0.15); color: #fff; transform: translateY(-10px) scale(1.1); }
+        .dock-item.running::after { content:''; position: absolute; bottom: -5px; width: 5px; height: 5px; background: var(--accent); border-radius: 50%; }
+
+        #toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%) translateY(-60px); background: #fff; color: #000; padding: 10px 25px; border-radius: 50px; font-weight: 700; z-index: var(--z-modal); transition: 0.4s; pointer-events: none; opacity: 0; }
+        #toast.active { transform: translateY(0); opacity: 1; }
+
+        /* --- LANGUAGE SWITCHER --- */
+        .lang-switch {
+            display: flex; justify-content: center; gap: 15px; margin-bottom: 20px;
+        }
+        .lang-btn {
+            font-size: 1.2rem; cursor: pointer; opacity: 0.5; transition: 0.3s; filter: grayscale(100%);
+        }
+        .lang-btn:hover, .lang-btn.active {
+            opacity: 1; filter: grayscale(0%); transform: scale(1.2);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="boot-screen">
+        <div class="boot-circle"></div>
+        <div style="letter-spacing: 3px; font-size: 0.8rem;">INITIALIZING ZENSPACE K-EDITION...</div>
+    </div>
+
+    <div class="layer-video">
+        <video id="vid-rain" class="bg-vid active" loop muted playsinline><source src="assets/video/rain.mp4" type="video/mp4"></video>
+        <video id="vid-sea" class="bg-vid" loop muted playsinline><source src="assets/video/sea.mp4" type="video/mp4"></video>
+        <video id="vid-forest" class="bg-vid" loop muted playsinline><source src="assets/video/forest.mp4" type="video/mp4"></video>
+        <video id="vid-fire" class="bg-vid" loop muted playsinline><source src="assets/video/fire.mp4" type="video/mp4"></video>
+    </div>
+    
+    <canvas id="particle-canvas"></canvas>
+    <div class="layer-overlay"></div>
+
+    <div style="display:none;">
+        <audio id="aud-rain" loop><source src="assets/audio/rain.mp3" type="audio/mpeg"></audio>
+        <audio id="aud-sea" loop><source src="assets/audio/sea.mp3" type="audio/mpeg"></audio>
+        <audio id="aud-forest" loop><source src="assets/audio/forest.mp3" type="audio/mpeg"></audio>
+        <audio id="aud-fire" loop><source src="assets/audio/fire.mp3" type="audio/mpeg"></audio>
+        <audio id="aud-alarm" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+    </div>
+
+    <div id="auth-overlay">
+        <div class="auth-card">
+            <div class="lang-switch">
+                <span class="lang-btn" onclick="ZenOS.Lang.set('tr')">🇹🇷</span>
+                <span class="lang-btn active" onclick="ZenOS.Lang.set('en')">EN</span>
+                <span class="lang-btn" onclick="ZenOS.Lang.set('ru')">🇷🇺</span>
+            </div>
+
+            <div id="authAlert" class="auth-alert"><i class="ph-bold ph-warning"></i> <span id="authMsg">Error</span></div>
+            <div style="font-size:3rem; color:var(--accent); margin-bottom:10px;"><i class="ph-fill ph-fingerprint"></i></div>
+            <h1 style="font-family:var(--font-tech); font-size:2rem; margin-bottom:5px;">ZENSPACE OS</h1>
+            <p id="txt-subtitle" style="color:var(--text-muted); margin-bottom:30px;">Professional Workspace Environment</p>
+            
+            <form id="authForm">
+                <div class="input-wrapper">
+                    <i class="ph-bold ph-user input-icon"></i>
+                    <input type="text" id="userInput" class="auth-input" placeholder="Username" autocomplete="off">
+                </div>
+                <div class="input-wrapper">
+                    <i class="ph-bold ph-lock-key input-icon"></i>
+                    <input type="password" id="passInput" class="auth-input" placeholder="Password">
+                </div>
+                <button type="submit" class="btn-primary" id="authBtn">LOGIN</button>
+            </form>
+            <div style="margin-top:20px; font-size:0.85rem; color:var(--text-muted); cursor:pointer;" id="toggleAuth">Create new account</div>
+        </div>
+    </div>
+
+    <div class="desktop-layer">
+        
+        <div class="desktop-icons">
+            <div class="d-icon" onclick="ZenOS.WM.open('timer')"><i class="ph-fill ph-clock" style="color:#3b82f6"></i> <span>Timer</span></div>
+            <div class="d-icon" onclick="ZenOS.WM.open('kanban')"><i class="ph-fill ph-kanban" style="color:#10b981"></i> <span>Tasks</span></div>
+            <div class="d-icon" onclick="ZenOS.WM.open('studio')"><i class="ph-fill ph-faders" style="color:#f59e0b"></i> <span>Studio</span></div>
+            <div class="d-icon" onclick="ZenOS.WM.open('coach')"><i class="ph-fill ph-brain" style="color:#8b5cf6"></i> <span>AI Coach</span></div>
+            <div class="d-icon" onclick="ZenOS.WM.open('terminal')"><i class="ph-fill ph-terminal-window" style="color:#fff"></i> <span>Term</span></div>
+
+            <div id="notes-container" style="display:flex; flex-wrap: wrap; gap:25px;">
+            </div>
+        </div>
+
+        <div id="win-area">
+            <div class="window" id="win-timer" style="top:100px; left:300px; width:360px;">
+                <div class="win-bar" onmousedown="ZenOS.WM.drag(event, 'win-timer')">
+                    <div class="win-title"><i class="ph-bold ph-clock"></i> Focus</div>
+                    <div class="win-ctrls">
+                        <button class="win-btn wb-min" onclick="ZenOS.WM.min('win-timer')"></button>
+                        <button class="win-btn wb-cls" onclick="ZenOS.WM.close('win-timer')"></button>
+                    </div>
+                </div>
+                <div class="win-content">
+                    <div class="timer-big" id="tDisplay">25:00</div>
+                    <div class="chip-grp">
+                        <div class="chip active" onclick="ZenOS.Apps.Timer.set(25, this)">Focus</div>
+                        <div class="chip" onclick="ZenOS.Apps.Timer.set(5, this)">Short</div>
+                        <div class="chip" onclick="ZenOS.Apps.Timer.set(15, this)">Long</div>
+                    </div>
+                    <button class="act-btn" id="tBtn" onclick="ZenOS.Apps.Timer.toggle()">ENGAGE (SPACE)</button>
+                    <div style="margin-top:20px; font-size:0.8rem; color:var(--text-muted); text-align:center;">Sessions: <span id="statSess" style="color:#fff; font-weight:700;">0</span></div>
+                </div>
+            </div>
+
+            <div class="window" id="win-kanban" style="top:120px; left:700px; width:500px; height:400px;">
+                <div class="win-bar" onmousedown="ZenOS.WM.drag(event, 'win-kanban')">
+                    <div class="win-title"><i class="ph-bold ph-kanban"></i> Task Matrix</div>
+                    <div class="win-ctrls"><button class="win-btn wb-min" onclick="ZenOS.WM.min('win-kanban')"></button><button class="win-btn wb-cls" onclick="ZenOS.WM.close('win-kanban')"></button></div>
+                </div>
+                <div class="win-content" style="display:flex; flex-direction:column;">
+                    <button style="margin-bottom:10px; padding:8px; background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:8px; cursor:pointer;" onclick="ZenOS.Apps.Kanban.addPrompt()">+ Add Task</button>
+                    <div class="kb-board">
+                        <div class="kb-col"><div class="kb-head">TODO <span id="c-todo">0</span></div><div class="kb-list" id="l-todo"></div></div>
+                        <div class="kb-col"><div class="kb-head">DOING <span id="c-doing">0</span></div><div class="kb-list" id="l-doing"></div></div>
+                        <div class="kb-col"><div class="kb-head">DONE <span id="c-done">0</span></div><div class="kb-list" id="l-done"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="window" id="win-studio" style="top:250px; left:200px; width:350px;">
+                <div class="win-bar" onmousedown="ZenOS.WM.drag(event, 'win-studio')">
+                    <div class="win-title"><i class="ph-bold ph-faders"></i> Audio Engine</div>
+                    <div class="win-ctrls"><button class="win-btn wb-min" onclick="ZenOS.WM.min('win-studio')"></button><button class="win-btn wb-cls" onclick="ZenOS.WM.close('win-studio')"></button></div>
+                </div>
+                <div class="win-content">
+                    <div class="env-grid">
+                        <div class="env-card active" onclick="ZenOS.Apps.Audio.scene('rain', this)"><i class="ph-fill ph-cloud-rain"></i> Rain</div>
+                        <div class="env-card" onclick="ZenOS.Apps.Audio.scene('sea', this)"><i class="ph-fill ph-waves"></i> Sea</div>
+                        <div class="env-card" onclick="ZenOS.Apps.Audio.scene('forest', this)"><i class="ph-fill ph-tree"></i> Forest</div>
+                        <div class="env-card" onclick="ZenOS.Apps.Audio.scene('fire', this)"><i class="ph-fill ph-fire"></i> Fire</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+                        <i class="ph-fill ph-speaker-high" id="muteIcon" style="cursor:pointer;" onclick="ZenOS.Apps.Audio.mute()"></i>
+                        <input type="range" class="vol-slider" min="0" max="100" value="50" oninput="ZenOS.Apps.Audio.vol(this.value)">
+                    </div>
+                    <div style="font-size:0.75rem; color:#888; margin-top:10px;">Shortcuts: 'M' (Mute), '+/-' (Vol)</div>
+                </div>
+            </div>
+
+ <!-- AI COACH WINDOW (TEK VE DOĞRU YAPILANDIRILMIŞ PENCERE) -->
+<div class="window" id="win-coach" style="top:150px; left:500px; width:380px; height: 500px;">
+    <div class="win-bar" onmousedown="ZenOS.WM.drag(event, 'win-coach')">
+        <div class="win-title"><i class="ph-bold ph-brain"></i> Zen Coach</div>
+        <div class="win-ctrls"><button class="win-btn wb-min" onclick="ZenOS.WM.min('win-coach')"></button><button class="win-btn wb-cls" onclick="ZenOS.WM.close('win-coach')"></button></div>
+    </div>
+    <div class="win-content" style="display:flex; flex-direction:column;">
+        <!-- Sohbet Geçmişi Alanı (Cevapların görüneceği yer burasıdır) -->
+        <div id="coachChatHistory" style="flex: 1; overflow-y: auto; margin-bottom: 10px; padding-right: 5px;">
+            <!-- Başlangıç mesajı JS init() tarafından eklenecek. -->
+        </div>
+        <!-- Giriş Alanı -->
+        <div class="input-wrapper" style="margin-top: auto;">
+            <input type="text" id="coachInput" class="auth-input" placeholder="Ask Zen Coach..." style="padding:10px 14px; margin-bottom:0; flex: 1;">
+        </div>
+        <!-- Butonlar -->
+        <div style="display:flex; gap:10px; margin-top: 10px;">
+            <button class="act-btn" style="background:rgba(255,255,255,0.1); color:#fff; font-size:0.8rem;" onclick="ZenOS.Apps.Coach.analyze()">Analyze Data</button>
+            <button class="act-btn" style="background:var(--accent); color:#000; font-size:0.8rem;" id="coachSendBtn" onclick="ZenOS.Apps.Coach.sendQuery()">SEND (ENTER)</button>
+        </div>
+    </div>
+</div>
+
+            <div class="window term-bg" id="win-terminal" style="top:350px; left:400px; width:500px; height:300px;">
+                <div class="win-bar" style="background:#1a1a1a;" onmousedown="ZenOS.WM.drag(event, 'win-terminal')">
+                    <div class="win-title" style="color:#2ed573"><i class="ph-bold ph-terminal"></i> root@zen:~</div>
+                    <div class="win-ctrls"><button class="win-btn wb-cls" onclick="ZenOS.WM.close('win-terminal')"></button></div>
+                </div>
+                <div class="term-out" id="termOut">
+                    <div>ZenSpace Kernel v10.0 loaded.</div>
+                    <div>Type 'help' for commands.</div>
+                </div>
+                <div class="term-in-row">
+                    <span style="color:#2ed573; font-weight:700;">$</span>
+                    <input type="text" class="term-in" id="termInput" autocomplete="off">
+                </div>
+            </div>
+        </div>
+
+        <div class="dock">
+            <div class="dock-item" onclick="ZenOS.WM.open('timer')" id="icon-win-timer" title="Timer"><i class="ph-fill ph-clock"></i></div>
+            <div class="dock-item" onclick="ZenOS.WM.open('kanban')" id="icon-win-kanban" title="Tasks"><i class="ph-fill ph-kanban"></i></div>
+            <div class="dock-item" onclick="ZenOS.WM.open('studio')" id="icon-win-studio" title="Studio"><i class="ph-fill ph-faders"></i></div>
+            <div class="dock-item" onclick="ZenOS.WM.open('coach')" id="icon-win-coach" title="AI Coach"><i class="ph-fill ph-brain"></i></div>
+            <div class="dock-item" onclick="ZenOS.WM.open('terminal')" id="icon-win-terminal" title="Terminal"><i class="ph-fill ph-terminal-window"></i></div>
+            <div style="width:1px; background:rgba(255,255,255,0.1); margin:0 5px;"></div>
+            <div class="dock-item" onclick="ZenOS.UI.toggleCinema()" title="Cinema Mode (H)"><i class="ph-fill ph-eye"></i></div>
+            <div class="dock-item" onclick="ZenOS.UI.toggleFull()" title="Fullscreen (F)"><i class="ph-fill ph-arrows-out"></i></div>
+        </div>
+    </div>
+
+    <div id="toast"><i class="ph-fill ph-info"></i> <span id="toastMsg">Ready</span></div>
+
+    <script>
+        
+/* --- LANGUAGE PACKS (EXTENDED NARRATIVE) --- */
+const TRANSLATIONS = {
+    en: {
+        subtitle: "Professional Workspace Environment",
+        login: "LOGIN", register: "REGISTER", create: "Create new account", back: "Back",
+        userph: "Username", passph: "Password",
+        timer: "Focus Timer", kanban: "Task Matrix", studio: "Audio Studio", coach: "AI Coach", term: "Terminal",
+        engage: "ENGAGE", abort: "ABORT",
+        coach_intro: "Neural link established. Analyzing biometrics...",
+        coach_tips: [
+            "Deep work requires zero distractions.", "The 20-20-20 rule: Look away every 20 mins.",
+            "Hydration levels critical. Drink water.", "Consistency beats intensity."
+        ],
+        mx: {
+            sys: "SYSTEM FAILURE... UNAUTHORIZED ACCESS...",
+            s0: "Wake up, {user}...", s1: "Knock, knock. The door is shaking. What do you do? (cmd: 'open' or 'wait')", s1_wait: "Agents broke in! Too late. (GAME OVER)", s2: "Morpheus: 'This is your last chance, {user}.' Blue pill (sleep) or Red pill (truth)? (cmd: 'blue' or 'red')", s2_blue: "Ignorance is bliss. Goodbye.", s3: "You took the Red Pill. The mirror is liquid. Do you 'touch' it or 'run'?", s3_run: "You cannot run from the truth. Coward.", s4: "You are in the construct. Morpheus says: 'Free your mind'. Jump off the building? (cmd: 'jump' or 'doubt')", s4_doubt: "You fell. Everyone falls the first time. (GAME OVER)",
+            s5: "You are flying! You reached the Source Code. The Architect is watching. [hack] or [destroy] the system?", s5_hack: "You rewrote the Matrix. You are now the God of this world. (WINNER)", s5_dest: "CRITICAL ERROR. SYSTEM DELETED. REBOOTING..."
+        }
+    },
+    tr: {
+        subtitle: "Profesyonel Çalışma Ortamı",
+        login: "GİRİŞ", register: "KAYIT", create: "Hesap Oluştur", back: "Geri",
+        userph: "Kullanıcı Adı", passph: "Şifre",
+        timer: "Odaklan", kanban: "Görevler", studio: "Stüdyo", coach: "AI Asistan", term: "Terminal",
+        engage: "BAŞLAT", abort: "İPTAL",
+        coach_intro: "Nöral bağlantı kuruldu. Analiz yapılıyor...",
+        coach_tips: ["Derin iş, sessizlik gerektirir.", "20-20-20 kuralı: Gözlerini dinlendir.", "Su içmeyi unutma.", "Süreklilik, yoğunluktan iyidir."],
+        mx: {
+            sys: "SİSTEM HATASI... YETKİSİZ ERİŞİM...",
+            s0: "Uyan, {user}...", s1: "Tık, tık. Kapı titriyor. Ne yapacaksın? (komut: 'open' [aç] veya 'wait' [bekle])", s1_wait: "Ajanlar kapıyı kırdı! Çok geç. (OYUN BİTTİ)", s2: "Morpheus: 'Bu son şansın {user}.' Mavi hap (uyku) mı, Kırmızı hap (gerçek) mi? (komut: 'blue' veya 'red')", s2_blue: "Cehalet mutluluktur. Güle güle.", s3: "Kırmızı hapı yuttun. Ayna sıvılaşıyor. Dokunacak mısın? (komut: 'touch' [dokun] veya 'run' [kaç])", s3_run: "Gerçeklerden kaçamazsın. Korkak.", s4: "Simülasyondasın. Morpheus: 'Zihnini özgür bırak' diyor. Atla? (komut: 'jump' [atla] veya 'doubt' [şüphe])", s4_doubt: "Düştün. İlk seferde herkes düşer. (OYUN BİTTİ)",
+            s5: "Uçuyorsun! Sistemin Kaynağına ulaştın. Mimar seni izliyor. Sistemi [hack] mi edeceksin, [destroy] (yok) mu edeceksin?", s5_hack: "Matrix'i yeniden yazdın. Artık bu dünyanın Tanrısı sensin. (KAZANDIN)", s5_dest: "KRİTİK HATA. SİSTEM SİLİNDİ. YENİDEN BAŞLATILIYOR..."
+        }
+    },
+    ru: {
+        subtitle: "Профессиональная среда", login: "ВОЙТИ", register: "РЕГИСТРАЦИЯ", create: "Создать", back: "Назад",
+        userph: "Имя", passph: "Пароль", timer: "Фокус", kanban: "Задачи", studio: "Аудио", coach: "AI Тренер", term: "Терминал",
+        engage: "СТАРТ", abort: "ОТМЕНА", coach_intro: "Нейронная связь. Анализ...",
+        coach_tips: ["Глубокая работа требует тишины.", "Правило 20-20-20: Отдыхай глазами.", "Пейте воду.", "Постоянство побеждает."],
+        mx: { sys: "СИСТЕМНЫЙ СБОЙ... ДОСТУП ЗАПРЕЩЕН...", s0: "Проснись, {user}...", s1: "Тук-тук. Дверь дрожит. (cmd: 'open' или 'wait')", s1_wait: "Агенты ворвались! (КОНЕЦ)", s2: "Морфеус: 'Это твой последний шанс, {user}.' 'blue' (сон) или 'red' (правда)?", s2_blue: "Неведение — это блаженство.", s3: "Красная таблетка. Зеркало жидкое. (cmd: 'touch' или 'run')", s3_run: "От правды не убежишь.", s4: "Прыгай с крыши. (cmd: 'jump' или 'doubt')", s4_doubt: "Ты упал. Все падают в первый раз.",
+            s5: "Ты летишь! Ты в Источнике. [hack] или [destroy] систему?", s5_hack: "Ты переписал Матрицу. Ты Бог. (ПОБЕДА)", s5_dest: "КРИТИЧЕСКАЯ ОШИБКА. ПЕРЕЗАГРУЗКА..."
+        }
+    }
+};
+
+const API_URL_BASE = "https://generativelanguage.googleapis.com/v1beta/models/";
+
+async function generateText(model, input) {
+  const res = await fetch("/api/request", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, input })
+  });
+  const data = await res.json();
+  console.log(data);
+}
+
+
+// Function to handle API calls with exponential backoff
+async function retryFetch(url, options, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            if (i === retries - 1) throw error;
+            const delay = Math.pow(2, i) * 1000;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+}
+
+// Fetches real-time weather data using Google Search grounding for a specified location
+async function fetchWeather(location) {
+    // Statik konum bilgisi yerine, fonksiyonun aldığı konumu kullanıyoruz
+    const userQuery = `Current weather report for ${location}. Provide temperature, condition, and wind speed in one short sentence.`;
+    
+    const payload = {
+        contents: [{ parts: [{ text: userQuery }] }],
+        tools: [{ "google_search": {} }],
+        systemInstruction: { parts: [{ text: "Act as a concise weather reporter." }] },
+    };
+    
+    // Flash modelini kullanıyoruz
+    const MODEL_NAME = 'gemini-2.5-flash'; 
+    const apiUrl = `${API_URL_BASE}${MODEL_NAME}:generateContent?key=${API_KEY}`;
+
+    try {
+        const result = await retryFetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        return result.candidates?.[0]?.content?.parts?.[0]?.text || "Weather data unavailable.";
+    } catch (e) {
+        // Hata durumunda daha spesifik mesaj döndürüyoruz
+        return `ERROR: Failed to fetch weather data for ${location}.`;
+    }
+}
+
+const CONFIG = { key: 'zen_k_ultimate_v12' };
+
+const ZenOS = {
+    // --- STATE MANAGEMENT ---
+    state: { 
+        user: null, lang: 'en', scene: 'rain', vol: 0.5, z: 100, 
+        timer: { val: 1500, init: 1500, on: false, id: null }, 
+        muted: false, 
+        // Default values for notes are not stored here to prevent empty DB writes.
+    },
+    
+    DB: {
+        get: () => JSON.parse(localStorage.getItem(CONFIG.key)) || {},
+        save: (d) => localStorage.setItem(CONFIG.key, JSON.stringify(d)),
+        user: () => {
+            const db = JSON.parse(localStorage.getItem(CONFIG.key)) || {};
+            const u = ZenOS.state.user;
+            if (!u || !db[u]) return null;
+            if (!db[u].kanban) db[u].kanban = {todo:[],doing:[],done:[]};
+            if (!db[u].stats) db[u].stats = {s:0,m:0};
+            if (!db[u].notes) db[u].notes = []; // Ensure notes array exists
+            return db[u];
+        }
+    },
+
+    // --- BOOT AND INITIALIZATION ---
+// --- BOOT AND INITIALIZATION ---
+    Boot: () => {
+        const savedLang = localStorage.getItem('zen_lang') || 'en';
+        if(ZenOS.Lang) ZenOS.Lang.set(savedLang);
+
+        setTimeout(() => {
+            const bootScreen = document.getElementById('boot-screen');
+            if(bootScreen) bootScreen.style.display = 'none';
+        }, 1500);
+
+        ZenOS.Visuals.init();
+        ZenOS.Apps.Terminal.init();
+// FIX: Coach'un init fonksiyonu, DOM hazırlandıktan sonra çağrılıyor.
+// Bu, Coach'taki input event listener'larının doğru kurulmasını sağlar.
+        ZenOS.Apps.Coach.init();
+        
+        // --- CRITICAL NOTE RENDER CHECK (Initial Load) ---
+        if (ZenOS.Apps.Notes && ZenOS.DB.user()) {
+            ZenOS.Apps.Notes.render();
+        }
+
+        document.getElementById('authForm').addEventListener('submit', ZenOS.Auth.submit);
+        document.getElementById('toggleAuth').addEventListener('click', ZenOS.Auth.toggle);
+        document.getElementById('termInput').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') ZenOS.Apps.Terminal.exec();
+        });
+
+        // KEYBOARD SHORTCUTS
+        document.addEventListener('keydown', (e) => {
+            if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            const k = e.key.toLowerCase();
+            if (e.code === 'Space') { e.preventDefault(); if (ZenOS.state.user) ZenOS.Apps.Timer.toggle(); }
+            else if (k === 'h') ZenOS.UI.toggleCinema();
+            else if (k === 'm') ZenOS.Apps.Audio.mute();
+            else if (k === 'f') ZenOS.UI.toggleFull();
+        });
+    },
+
+    // --- LANGUAGE MANAGER ---
+    Lang: {
+        set: (code) => {
+            ZenOS.state.lang = code;
+            localStorage.setItem('zen_lang', code);
+            const t = TRANSLATIONS[code];
+
+            const sub = document.getElementById('txt-subtitle'); if(sub) sub.innerText = t.subtitle;
+            const authBtn = document.getElementById('authBtn'); if(authBtn) authBtn.innerText = ZenOS.Auth.isReg ? t.register : t.login;
+            const toggleAuth = document.getElementById('toggleAuth'); if(toggleAuth) toggleAuth.innerText = ZenOS.Auth.isReg ? t.back : t.create;
+            document.getElementById('userInput').placeholder = t.userph;
+            document.getElementById('passInput').placeholder = t.passph;
+
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            const btnIndex = code === 'tr' ? 0 : code === 'en' ? 1 : 2;
+            const btns = document.querySelectorAll('.lang-btn');
+            if(btns[btnIndex]) btns[btnIndex].classList.add('active');
+
+            const apps = [
+                { key: 'timer', id: 'win-timer', icon: 'ph-clock', click: 'timer' },
+                { key: 'kanban', id: 'win-kanban', icon: 'ph-kanban', click: 'kanban' },
+                { key: 'studio', id: 'win-studio', icon: 'ph-faders', click: 'studio' },
+                { key: 'coach', id: 'win-coach', icon: 'ph-brain', click: 'coach' },
+                { key: 'term', id: 'win-terminal', icon: 'ph-terminal-window', click: 'terminal' }
+            ];
+            apps.forEach(app => {
+                const winTitle = document.querySelector(`#${app.id} .win-title`);
+                if(winTitle && app.key !== 'term') { winTitle.innerHTML = `<i class="ph-bold ${app.icon}"></i> ${t[app.key]}`; }
+                const desktopIcon = document.querySelector(`.d-icon[onclick*="${app.click}"] span`);
+                if(desktopIcon) desktopIcon.innerText = t[app.key];
+            });
+
+            const tBtn = document.getElementById('tBtn');
+            if(tBtn) { if(!ZenOS.state.timer.on) tBtn.innerText = t.engage; else tBtn.innerText = t.abort; }
+        }
+    },
+
+    // --- AUTHENTICATION ---
+    Auth: {
+        isReg: false,
+        toggle: () => {
+            ZenOS.Auth.isReg = !ZenOS.Auth.isReg;
+            const t = TRANSLATIONS[ZenOS.state.lang];
+            const isR = ZenOS.Auth.isReg;
+            
+            document.getElementById('authBtn').innerText = isR ? t.register : t.login;
+            document.getElementById('toggleAuth').innerText = isR ? t.back : t.create;
+            document.getElementById('authAlert').style.display = 'none';
+        },
+        err: (m) => {
+            const el = document.getElementById('authAlert');
+            document.getElementById('authMsg').innerText = m;
+            el.style.display = 'flex';
+            el.style.animation = 'none'; el.offsetHeight; el.style.animation = 'shake 0.4s';
+        },
+        submit: (e) => {
+            e.preventDefault();
+            const u = document.getElementById('userInput').value.trim();
+            const p = document.getElementById('passInput').value.trim();
+            if(!u || !p) return ZenOS.Auth.err("Fields empty");
+
+            const d = ZenOS.DB.get();
+            if(ZenOS.Auth.isReg) {
+                if(d[u]) return ZenOS.Auth.err("User exists");
+                d[u] = { pass: btoa(p), kanban: {todo:[],doing:[],done:[]}, stats: {s:0,m:0}, capsule: "", notes: [] };
+                ZenOS.DB.save(d);
+                ZenOS.Auth.login(u);
+            } else {
+                if(d[u] && d[u].pass === btoa(p)) ZenOS.Auth.login(u);
+                else ZenOS.Auth.err("Invalid login");
+            }
+        },
+        login: (u) => {
+            ZenOS.state.user = u;
+            document.getElementById('auth-overlay').classList.add('hidden');
+            ZenOS.UI.toast(`Welcome ${u}`);
+            
+            const d = ZenOS.DB.user();
+            if(d && d.stats) document.getElementById('statSess').innerText = d.stats.s;
+
+            ZenOS.Apps.Kanban.render();
+            // --- CRITICAL FIX: DRAW NOTES ON LOGIN ---
+            if (ZenOS.Apps.Notes) ZenOS.Apps.Notes.render(); 
+            
+            const v = document.getElementById(`vid-${ZenOS.state.scene}`);
+            if(v) { v.muted=true; v.play().catch(()=>{}); }
+            ZenOS.Apps.Audio.vol(50);
+        },
+        logout: () => location.reload()
+    },
+
+    // --- WINDOW MANAGER (WM) ---
+    WM: {
+        focus: (id) => {
+            ZenOS.state.z++;
+            const el = document.getElementById(id);
+            if(el) { el.style.zIndex = ZenOS.state.z; document.querySelectorAll('.window').forEach(w=>w.classList.remove('active')); el.classList.add('active'); }
+        },
+        open: (app) => {
+            const id = 'win-' + app;
+            const w = document.getElementById(id);
+            if(w) { w.classList.add('open'); w.classList.remove('minimized'); ZenOS.WM.focus(id); document.getElementById('icon-'+id)?.classList.add('running'); }
+        },
+        close: (id) => {
+            const w = document.getElementById(id);
+            if(w) w.classList.remove('open');
+            document.getElementById('icon-'+id)?.classList.remove('running');
+        },
+        min: (id) => document.getElementById(id)?.classList.add('minimized'),
+        drag: (e, id) => {
+            const w = document.getElementById(id);
+            ZenOS.WM.focus(id);
+            let sx = e.clientX - w.getBoundingClientRect().left;
+            let sy = e.clientY - w.getBoundingClientRect().top;
+            const move = (ev) => { w.style.left = ev.pageX - sx + 'px'; w.style.top = ev.pageY - sy + 'px'; }
+            document.addEventListener('mousemove', move);
+            document.onmouseup = () => { document.removeEventListener('mousemove', move); document.onmouseup = null; }
+        }
+    },
+
+    // --- APPLICATIONS (APPS) ---
+    Apps: {
+        Timer: {
+            set: (m, el) => {
+                if(ZenOS.state.timer.on) ZenOS.Apps.Timer.toggle();
+                ZenOS.state.timer.init = m*60; ZenOS.state.timer.val = m*60;
+                ZenOS.Apps.Timer.disp();
+                document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+                if(el) el.classList.add('active');
+            },
+            toggle: () => {
+                const s = ZenOS.state.timer;
+                const btn = document.getElementById('tBtn');
+                const t = TRANSLATIONS[ZenOS.state.lang];
+
+                if(s.on) {
+                    clearInterval(s.id); s.on=false;
+                    btn.innerText = t.engage; btn.style.background = "#fff"; btn.style.color="#000";
+                } else {
+                    s.on=true; btn.innerText = t.abort; btn.style.background = "#ef4444"; btn.style.color="#fff";
+                    s.id = setInterval(() => {
+                        if(s.val > 0) { s.val--; ZenOS.Apps.Timer.disp(); }
+                        else { 
+                            ZenOS.Apps.Timer.toggle(); ZenOS.UI.toast("Session Complete!");
+                            document.getElementById('aud-alarm').play().catch(()=>{});
+                            const u = ZenOS.state.user;
+                            if(u) {
+                                const db = ZenOS.DB.get();
+                                if(db[u]) {
+                                    if(!db[u].stats) db[u].stats = {s:0, m:0};
+                                    db[u].stats.s += 1;
+                                    db[u].stats.m += Math.floor(s.init / 60);
+                                    ZenOS.DB.save(db);
+                                    const statEl = document.getElementById('statSess');
+                                    if(statEl) statEl.innerText = db[u].stats.s;
+                                }
+                            }
+                        }
+                    }, 1000);
+                }
+            },
+            disp: () => {
+                const m = Math.floor(ZenOS.state.timer.val/60), s = ZenOS.state.timer.val%60;
+                document.getElementById('tDisplay').innerText = `${m}:${s<10?'0'+s:s}`;
+            }
+        },
+        Kanban: {
+            addPrompt: () => {
+                if(!ZenOS.state.user) return ZenOS.UI.toast("Login Required");
+                const t = prompt("Task Name:"); if(t) ZenOS.Apps.Kanban.add(t);
+            },
+            add: (txt) => {
+                const d = ZenOS.DB.get();
+                if(d[ZenOS.state.user]) { d[ZenOS.state.user].kanban.todo.push({id:Date.now(), text:txt}); ZenOS.DB.save(d); ZenOS.Apps.Kanban.render(); }
+            },
+            move: (id, f, t) => {
+                const d = ZenOS.DB.get(); const item = d[ZenOS.state.user].kanban[f].find(x=>x.id==id);
+                d[ZenOS.state.user].kanban[f] = d[ZenOS.state.user].kanban[f].filter(x=>x.id!=id);
+                d[ZenOS.state.user].kanban[t].push(item); ZenOS.DB.save(d); ZenOS.Apps.Kanban.render();
+            },
+            del: (id, list) => {
+                const d = ZenOS.DB.get();
+                d[ZenOS.state.user].kanban[list] = d[ZenOS.state.user].kanban[list].filter(x=>x.id!=id);
+                ZenOS.DB.save(d); ZenOS.Apps.Kanban.render();
+            },
+            render: () => {
+                if(!ZenOS.state.user) return;
+                const k = ZenOS.DB.user().kanban;
+                ['todo','doing','done'].forEach(l => {
+                    const el = document.getElementById('l-'+l); el.innerHTML="";
+                    document.getElementById('c-'+l).innerText = k[l].length;
+                    k[l].forEach(i => {
+                        const c = document.createElement('div'); c.className='kb-card'; 
+                        c.innerHTML = `<span>${i.text}</span><i class="ph-bold ph-x kb-del" onclick="event.stopPropagation();ZenOS.Apps.Kanban.del(${i.id},'${l}')"></i>`;
+                        c.onclick = () => {
+                            if(l==='todo') ZenOS.Apps.Kanban.move(i.id,'todo','doing');
+                            else if(l==='doing') ZenOS.Apps.Kanban.move(i.id,'doing','done');
+                            else if(l==='done') ZenOS.Apps.Kanban.move(i.id,'done','todo');
+                        };
+                        el.appendChild(c);
+                    });
+                });
+            }
+        },
+        Audio: {
+            scene: (s, el) => {
+                if(ZenOS.state.scene===s)return;
+                document.querySelectorAll('.bg-vid').forEach(v=>v.classList.remove('active'));
+                const v = document.getElementById(`vid-${s}`); if(v){ v.classList.add('active'); v.play().catch(()=>{}); }
+                document.querySelectorAll('audio').forEach(a=>a.pause());
+                const a = document.getElementById(`aud-${s}`); if(a){ a.currentTime=0; a.volume=ZenOS.state.muted?0:ZenOS.state.vol; a.play(); }
+                document.querySelectorAll('.env-card').forEach(c=>c.classList.remove('active'));
+                if(el) el.classList.add('active'); ZenOS.state.scene=s;
+            },
+            vol: (v) => {
+                ZenOS.state.vol = v/100;
+                if(!ZenOS.state.muted) { const a = document.getElementById(`aud-${ZenOS.state.scene}`); if(a) a.volume=ZenOS.state.vol; }
+            },
+            mute: () => {
+                ZenOS.state.muted = !ZenOS.state.muted;
+                const a = document.getElementById(`aud-${ZenOS.state.scene}`);
+                if(ZenOS.state.muted) { if(a) a.volume=0; ZenOS.UI.toast("Muted"); } 
+                else { if(a) a.volume=ZenOS.state.vol; ZenOS.UI.toast("Unmuted"); }
+            }
+        },
+Coach: {
+    // History storage, initialized with a System instruction for context
+    chatHistory: [{ role: "system", parts: [{ text: "You are the Zen Coach, a helpful, concise, and professional AI assistant focused on productivity and personal development. Always keep your answers brief." }] }],
+
+    init: () => {
+        // 1. Setup ENTER listener for chat input
+        const input = document.getElementById('coachInput');
+        if (input) {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') ZenOS.Apps.Coach.sendQuery();
+            });
+        }
+        
+        // 2. Initialize welcome message dynamically on load
+        const chatHistoryEl = document.getElementById('coachChatHistory');
+        // FIX: Sadece sohbet penceresi yüklendiğinde ve geçmiş boşsa mesajı ekle.
+        if (chatHistoryEl && ZenOS.Apps.Coach.chatHistory.length === 1 && chatHistoryEl.children.length === 0) {
+             ZenOS.Apps.Coach.type("Zen Coach System activated. Ask me anything about productivity, tasks, or analysis.");
+        }
+    },
+
+    // Simulates the typing effect for AI responses
+    type: (txt) => {
+        const chatHistoryEl = document.getElementById('coachChatHistory');
+        const aiMsgDiv = document.createElement('div');
+        aiMsgDiv.className = 'ai-msg';
+        
+        if (chatHistoryEl) {
+            chatHistoryEl.appendChild(aiMsgDiv);
+            aiMsgDiv.scrollIntoView({ behavior: 'smooth' });
+        } else {
+             // Konsola hata bas, bu bir DOM hatasıdır
+             console.error("Coach: Chat history element not found (type).");
+             return; 
+        }
+
+        aiMsgDiv.classList.add('typing-cursor');
+        let i = 0;
+        const t = setInterval(() => {
+            aiMsgDiv.innerText += txt.charAt(i);
+            i++;
+            if (i > txt.length) {
+                clearInterval(t);
+                aiMsgDiv.classList.remove('typing-cursor');
+            }
+        }, 30);
+    },
+
+    // Adds user query to the chat history display
+    addUserMessage: (query) => {
+        const chatHistoryEl = document.getElementById('coachChatHistory');
+        const userMsgDiv = document.createElement('div');
+        userMsgDiv.className = 'ai-msg';
+        userMsgDiv.style.background = 'rgba(255,255,255,0.1)';
+        userMsgDiv.style.borderLeft = '3px solid #ccc';
+        userMsgDiv.innerText = `You: ${query}`;
+        
+        if (chatHistoryEl) {
+            chatHistoryEl.appendChild(userMsgDiv);
+            userMsgDiv.scrollIntoView({ behavior: 'smooth' });
+        } else {
+             console.error("Coach: Chat history element not found (addUserMessage).");
+        }
+    },
+
+    // Handles sending the user query to the Gemini Pro model
+    sendQuery: async () => {
+        if (!ZenOS.state.user) return ZenOS.UI.toast("Login Required for AI Coach");
+        if (API_KEY === "") return ZenOS.UI.toast("API Key Missing! Cannot connect to Zen Coach core.");
+
+        const inputEl = document.getElementById('coachInput');
+        const userQuery = inputEl.value.trim();
+        if (!userQuery) return;
+
+        ZenOS.Apps.Coach.addUserMessage(userQuery);
+        inputEl.value = '';
+        inputEl.disabled = true;
+
+        // Display waiting message
+        const waitingMsg = 'Zen Coach is thinking...';
+        ZenOS.Apps.Coach.type(waitingMsg);
+        
+        // 1. Prepare Payload with full history for context
+        const payload = {
+            contents: ZenOS.Apps.Coach.chatHistory.concat([{ role: "user", parts: [{ text: userQuery }] }]),
+        };
+
+        // Use the Pro model for general chat
+        const MODEL_NAME = 'gemini-2.5-pro'; 
+        const apiUrl = `${API_URL_BASE}${MODEL_NAME}:generateContent?key=${API_KEY}`;
+        
+        try {
+            const result = await retryFetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || "Error: Received empty response from AI core.";
+
+            // 2. Remove waiting message and display response
+            const history = document.getElementById('coachChatHistory');
+            // Remove the 'thinking' message (the last child)
+            if (history && history.lastElementChild && history.lastElementChild.innerText === waitingMsg) {
+                history.removeChild(history.lastElementChild); 
+            }
+            ZenOS.Apps.Coach.type(aiResponse);
+
+            // 3. Update history for subsequent requests
+            ZenOS.Apps.Coach.chatHistory.push({ role: "user", parts: [{ text: userQuery }] });
+            ZenOS.Apps.Coach.chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+            
+        } catch (e) {
+            ZenOS.Apps.Terminal.print(`AI Coach ERROR: ${e.message}`, 'error');
+            ZenOS.Apps.Coach.type(`ERROR: Could not connect to AI service. (Details: ${e.message.slice(0, 50)}...)`);
+        } finally {
+            inputEl.disabled = false;
+            inputEl.focus();
+        }
+    },
+
+    // Provides real, actionable advice based on productivity metrics
+    analyze: () => {
+        if (!ZenOS.state.user) return ZenOS.UI.toast("Login Required");
+        if (API_KEY === "") return ZenOS.UI.toast("API Key Missing!");
+        
+        const data = ZenOS.DB.user();
+        const k = data.kanban;
+        const s = data.stats;
+
+        // Build a detailed prompt based on user data
+        let analysisPrompt = "Analyze my current productivity status based on the following data and provide one concise, actionable tip:\n";
+        analysisPrompt += `- Total Focus Sessions Completed: ${s.s}\n`;
+        analysisPrompt += `- Total Minutes Focused: ${s.m}\n`;
+        analysisPrompt += `- Kanban Tasks: ${k.todo.length} TODO, ${k.doing.length} DOING, ${k.done.length} DONE.\n`;
+        analysisPrompt += `Based on this, what is the single most important, actionable productivity tip I should follow right now?`;
+        
+        ZenOS.Apps.Coach.addUserMessage('Analyze my current productivity metrics.');
+        
+        ZenOS.Apps.Coach.sendCustomQuery(analysisPrompt);
+    },
+
+    // Helper for analysis call (uses Pro model for reasoning)
+    sendCustomQuery: async (customPrompt) => {
+        const waitingMsg = 'Analyzing metrics...';
+        ZenOS.Apps.Coach.type(waitingMsg);
+
+        const payload = {
+            contents: [{ role: "user", parts: [{ text: customPrompt }] }],
+            systemInstruction: { parts: [{ text: "Act as a highly analytical productivity coach. Do not mention the raw data, only provide a single, actionable, and concise tip based on the provided metrics. Start with 'Coach Tip:'" }] },
+        };
+
+        // Use the Pro model for complex analysis
+        const MODEL_NAME = 'gemini-2.5-pro'; 
+        const apiUrl = `${API_URL_BASE}${MODEL_NAME}:generateContent?key=${API_KEY}`;
+
+        try {
+            const result = await retryFetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || "Error: Analysis failed.";
+
+            const history = document.getElementById('coachChatHistory');
+            // Remove the 'thinking' message
+            if (history && history.lastElementChild && history.lastElementChild.innerText === waitingMsg) {
+                history.removeChild(history.lastElementChild);
+            }
+            ZenOS.Apps.Coach.type(aiResponse);
+            
+        } catch (e) {
+            ZenOS.Apps.Coach.type(`ERROR: Failed to run analysis. (Network/API Key issue)`);
+        }
+    }
+},
+        // --- DYNAMIC NOTES (FILE SYSTEM) ---
+        // Manages creation, viewing, updating, and deletion of user notes/files.
+        Notes: {
+            // Set MAX_NOTES limit to 10
+            MAX_NOTES: 10,
+
+            add: (title, content) => {
+                if (!ZenOS.state.user) return ZenOS.UI.toast("Login Required");
+                const d = ZenOS.DB.get();
+                const userNotes = d[ZenOS.state.user].notes;
+
+                // 1. File Limit Check
+                if (userNotes.length >= ZenOS.Apps.Notes.MAX_NOTES) {
+                    ZenOS.Apps.Terminal.print(`Error: Maximum number of files (${ZenOS.Apps.Notes.MAX_NOTES}) reached.`, 'error');
+                    return false;
+                }
+
+                // 2. File Name Collision Check (No duplicate filenames)
+                if (userNotes.some(n => n.title === title)) {
+                    ZenOS.Apps.Terminal.print(`Error: File ${title}.txt already exists.`, 'error');
+                    return false;
+                }
+
+                const newId = Date.now();
+                const newNote = { id: newId, title: title, content: content };
+
+                userNotes.push(newNote);
+                ZenOS.DB.save(d);
+                
+                ZenOS.Apps.Notes.render(); // Draw the icon on the desktop
+                return true;
+            },
+
+            // Updates the content of an existing file/note
+            update: (filename, newContent) => {
+                // 1. User check
+                if (!ZenOS.state.user) return false;
+                
+                // 2. Safely retrieve database and note list
+                const d = ZenOS.DB.get();
+                const userNotes = d[ZenOS.state.user]?.notes;
+
+                if (!userNotes) return false;
+                
+                // 3. Find note by title (filename)
+                const existingNote = userNotes.find(n => n.title === filename);
+
+                if (existingNote) {
+                    // 4. Update content
+                    existingNote.content = newContent;
+                    
+                    // 5. Save to database
+                    ZenOS.DB.save(d);
+                    
+                    // 6. Window update (optional, but important for visual feedback)
+                    const winId = `win-note-${existingNote.id}`;
+                    const existingWin = document.getElementById(winId);
+                    if (existingWin) {
+                        const contentEl = existingWin.querySelector('.win-content');
+                        // Display the new content
+                        if (contentEl) contentEl.innerHTML = newContent; 
+                        ZenOS.WM.focus(winId); 
+                    }
+                    
+                    return true;
+                }
+                
+                // Return false if note not found
+                return false;
+            },
+
+            render: () => {
+                if (!ZenOS.state.user) return;
+                const notesContainer = document.getElementById('notes-container');
+                if (!notesContainer) return;
+                
+                notesContainer.innerHTML = ''; 
+                const notes = ZenOS.DB.user()?.notes || [];
+
+                notes.forEach(note => {
+                    const noteIcon = document.createElement('div');
+                    noteIcon.className = 'd-icon d-note';
+                    noteIcon.onclick = () => ZenOS.Apps.Notes.show(note); 
+                    
+                    noteIcon.innerHTML = `
+                        <i class="ph-fill ph-file-text" style="color:#d1d5db;"></i> 
+                        <span>${note.title}.txt</span>
+                    `;
+                    notesContainer.appendChild(noteIcon);
+                });
+            },
+            delete: (filename) => {
+                if (!ZenOS.state.user) return false;
+                
+                const d = ZenOS.DB.get();
+                const userNotes = d[ZenOS.state.user]?.notes;
+
+                if (!userNotes) return false;
+                
+                // Find index of the file to delete
+                const existingNoteIndex = userNotes.findIndex(n => n.title === filename);
+
+                if (existingNoteIndex !== -1) {
+                    const deletedNoteId = userNotes[existingNoteIndex].id;
+                    
+                    // 1. Delete from database
+                    userNotes.splice(existingNoteIndex, 1);
+                    ZenOS.DB.save(d);
+
+                    // 2. Close the window if it's open
+                    ZenOS.WM.close(`note-${deletedNoteId}`);
+
+                    // 3. Re-render desktop icons
+                    ZenOS.Apps.Notes.render(); 
+                    
+                    return true;
+                }
+                
+                return false; // File not found
+            },
+            show: (note) => {
+                const winId = `win-note-${note.id}`;
+                const existingWin = document.getElementById(winId);
+                if (existingWin) { ZenOS.WM.open(`note-${note.id}`); return; }
+
+                const winHTML = `
+                    <div class="window" id="${winId}" style="top:25%; left:30%; width:400px; height:300px;">
+                        <div class="win-bar" onmousedown="ZenOS.WM.drag(event, '${winId}')">
+                            <div class="win-title"><i class="ph-bold ph-file-text"></i> ${note.title}.txt</div>
+                            <div class="win-ctrls">
+                                <button class="win-btn wb-min" onclick="ZenOS.WM.min('${winId}')"></button>
+                                <button class="win-btn wb-cls" onclick="ZenOS.WM.close('${winId}')"></button>
+                            </div>
+                        </div>
+                        <div class="win-content" style="white-space: pre-wrap; font-family: var(--font-mono); font-size: 0.8rem; background: #000; color:#fff; padding:15px;">
+                            ${note.content}
+                        </div>
+                    </div>
+                `;
+                document.getElementById('win-area').insertAdjacentHTML('beforeend', winHTML);
+                ZenOS.WM.open(`note-${note.id}`);
+            
+            }
+        },
+        // --- TERMINAL (ULTIMATE: FIXES APPLIED) ---
+        Terminal: {
+            history: [], historyIndex: -1, inGame: false, stage: 0,
+            
+            init: () => {
+                const inp = document.getElementById('termInput');
+                if(inp) inp.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowUp') {
+                        const h = ZenOS.Apps.Terminal.history;
+                        const i = ZenOS.Apps.Terminal.historyIndex;
+                        if (h.length > 0 && i < h.length - 1) {
+                            ZenOS.Apps.Terminal.historyIndex++;
+                            inp.value = h[h.length - 1 - ZenOS.Apps.Terminal.historyIndex];
+                        }
+                    }
+                });
+            },
+
+            print: (text, type = 'neutral') => {
+                const out = document.getElementById('termOut');
+                const line = document.createElement('div');
+                if (type === 'success') line.style.color = '#2ed573';
+                if (type === 'error') line.style.color = '#ff4757';
+                if (type === 'warn') line.style.color = '#ffa502';
+                if (type === 'info') line.style.color = '#3b82f6';
+                if (type === 'system') { line.style.color = '#a855f7'; line.style.fontWeight = 'bold'; }
+                line.innerHTML = text; 
+                out.appendChild(line);
+                out.scrollTop = out.scrollHeight;
+            },
+
+            format: (text) => {
+                const u = ZenOS.state.user || 'Neo';
+                return text.replace('{user}', `<b style="color:#fff; text-transform:uppercase;">${u}</b>`);
+            },
+
+            // --- NARRATIVE ENGINE (MATRIX SIMULATION) ---
+            gameLoop: (cmd) => {
+                const t = ZenOS.Apps.Terminal;
+                const p = (msg, style) => t.print(t.format(msg), style);
+                const story = TRANSLATIONS[ZenOS.state.lang].mx;
+
+                if (cmd === 'exit') { t.inGame = false; t.stage = 0; p("Simulation terminated.", 'system'); return; }
+
+                switch(t.stage) {
+                    case 1: 
+                        if (cmd === 'open') { p(story.s2, 'info'); t.stage = 2; }
+                        else if (cmd === 'wait') { p(story.s1_wait, 'error'); t.inGame = false; }
+                        else p("Cmd: 'open' / 'wait'", 'warn'); break;
+                    case 2:
+                        if (cmd === 'red') { p(story.s3, 'warn'); t.stage = 3; }
+                        else if (cmd === 'blue') { p(story.s2_blue, 'info'); t.inGame = false; }
+                        else p("Cmd: 'blue' / 'red'", 'warn'); break;
+                    case 3:
+                        if (cmd === 'touch') { p(story.s4, 'info'); t.stage = 4; }
+                        else if (cmd === 'run') { p(story.s3_run, 'error'); t.inGame = false; }
+                        else p("Cmd: 'touch' / 'run'", 'warn'); break;
+                    case 4:
+                        if (cmd === 'jump') { p(story.s5, 'system'); t.stage = 5; }
+                        else if (cmd === 'doubt') { p(story.s4_doubt, 'error'); t.inGame = false; }
+                        else p("Cmd: 'jump' / 'doubt'", 'warn'); break;
+                    case 5:
+                        if (cmd === 'hack') { p(story.s5_hack, 'success'); t.inGame = false; }
+                        else if (cmd === 'destroy') { p(story.s5_dest, 'error'); setTimeout(() => location.reload(), 2500); }
+                        else p("Cmd: 'hack' / 'destroy'", 'warn'); break;
+                }
+            },
+
+            // --- COMMAND MANAGER (EXEC) ---
+            exec: () => {
+                const inp = document.getElementById('termInput');
+                const rawCmd = inp.value.trim().toLowerCase();
+                if (!rawCmd) return;
+
+                if (ZenOS.Apps.Terminal.inGame) {
+                    ZenOS.Apps.Terminal.print(`> ${rawCmd}`, 'neutral');
+                    ZenOS.Apps.Terminal.gameLoop(rawCmd);
+                    inp.value = '';
+                    return;
+                }
+
+                ZenOS.Apps.Terminal.history.push(rawCmd);
+                ZenOS.Apps.Terminal.historyIndex = -1;
+                const args = rawCmd.split(' ');
+                const cmd = args[0];
+                const param = args.slice(1).join(' ');
+
+                ZenOS.Apps.Terminal.print(`<span style="color:#fff;">root@zen:~$</span> ${rawCmd}`);
+
+                switch (cmd) {
+                    
+                    case 'help':
+                        const helpText = `
+                        <div style="margin-top:5px; margin-bottom:5px; line-height:1.6; padding: 5px;">
+                            <span style="color:#2ed573; font-weight:bold; border-bottom:1px solid #2ed573; padding-bottom: 2px;">ZENSPACE KERNEL COMMANDS v4.4</span><br>
+                            
+                            <br><span style="color:#3b82f6; font-weight:bold;">[ CORE & APPLICATIONS ]</span><br>
+                            <b style="color:#fff;">open</b> <span style="color:#aaa;">[app]</span>  : timer, kanban, studio, coach<br>
+                            <b style="color:#fff;">close</b> <span style="color:#aaa;">[app]</span> : Close specific window<br>
+                            <b style="color:#fff;">clear</b>    : Clear terminal screen<br>
+                            
+                            <br><span style="color:#ffa502; font-weight:bold;">[ SYSTEM & INFO ]</span><br>
+                            <b style="color:#fff;">whoami</b>    : Current user info<br>
+                            <b style="color:#fff;">neofetch</b>  : System info summary<br>
+                            <b style="color:#fff;">ls</b>        : List apps/files<br>
+                            <b style="color:#fff;">reboot</b>    : Restart ZenSpace OS<br>
+                            <b style="color:#fff;">logout</b>    : End session<br>
+
+                            <br><span style="color:#ff7675; font-weight:bold;">[ FILE & DATA UTILITY ]</span><br>
+                            <b style="color:#fff;">touch</b> <span style="color:#aaa;">[filename]</span>: Create new empty file <span style="color:#ccc;">(Max 10 files)</span><br>
+                            <b style="color:#fff;">nano</b> <span style="color:#aaa;">[f] "[c]"</span>: Edit/write content to existing file <span style="color:#ccc;">(Does NOT create file)</span><br>
+                            <b style="color:#fff;">rm</b> <span style="color:#aaa;">[filename]</span>: Delete file from desktop/system<br>
+                            <b style="color:#fff;">task -a</b> <span style="color:#aaa;">[txt]</span>: Add new task to Kanban<br>
+                            <b style="color:#fff;">focus</b> <span style="color:#aaa;">[min]</span>  : Start custom timer<br>
+                            
+                            <br><span style="color:#a855f7; font-weight:bold;">[ K-PROTOCOL ]</span><br>
+                            <b style="color:#fff;">lang</b> <span style="color:#aaa;">[code]</span>  : Change language (tr / en / ru)<br>
+                            <b style="color:#fff;">scene</b> <span style="color:#aaa;">[name]</span>: Set atmosphere (rain / sea / forest / fire)<br>
+                            <b style="color:#fff;">weather</b>    : Get real-time weather (Uses Geo-location if no argument provided)<br>
+                            <b style="color:#fff;">matrix</b>    : Enter the simulation (Game)<br>
+                        </div>`;
+                        ZenOS.Apps.Terminal.print(helpText);
+                        break;
+                    // --- DYNAMIC FILE MANAGEMENT (TOUCH, NANO, LS) ---
+                    case 'touch':
+                        if (param) {
+                            // 'touch' command only creates an empty file. Content defaults to [EMPTY FILE CONTENT].
+                            const success = ZenOS.Apps.Notes.add(param, "[EMPTY FILE CONTENT]");
+                            if (success) {
+                                ZenOS.Apps.Terminal.print(`Empty file created and rendered: ${param}.txt`, 'info');
+                            }
+                            // If there's an error (limit/collision), ZenOS.Apps.Notes.add already printed the message.
+                        } else {
+                            ZenOS.Apps.Terminal.print("Usage: touch [filename]", 'warn');
+                        }
+                        break;
+                    // --- UPDATED NANO COMMAND (Writes only to existing files) ---
+                    case 'nano':
+                        // Parse the parameter: [filename] "..."
+                        const nanoMatch = param.match(/^(\S+)\s+"(.*)"$/s); // /s flag added to support multiline content (for robustness)
+                        
+                        if (nanoMatch) {
+                            const filename = nanoMatch[1]; 
+                            const newContent = nanoMatch[2]; 
+                            
+                            // Calling ZenOS.Apps.Notes.update function
+                            const updated = ZenOS.Apps.Notes.update(filename, newContent);
+
+                            if (updated) {
+                                ZenOS.Apps.Terminal.print(`File saved and rendered: ${filename}.txt`, 'success');
+                            } else {
+                                // If note is not found, this runs
+                                ZenOS.Apps.Terminal.print(`Error: File ${filename}.txt not found. Note: nano only edits existing files. Use 'touch' to create a new file.`, 'error');
+                            }
+                        } else {
+                            ZenOS.Apps.Terminal.print("Usage: nano [filename] \"[content]\"", 'warn');
+                            ZenOS.Apps.Terminal.print("Example: nano mynote \"This is the new text for mynote.\"", 'info');
+                        }
+                        break;
+                        
+                    case 'ls':
+                        const userNotes = ZenOS.DB.user()?.notes || [];
+                        let listOutput = "timer.exe\nkanban.app\nstudio.wav\ncoach.ai\nterminal.sh\n";
+                        ZenOS.Apps.Terminal.print(listOutput, 'info');
+
+                        if (userNotes.length > 0) {
+                            ZenOS.Apps.Terminal.print("\n--- NOTES ---", 'system');
+                            userNotes.map(n => `${n.title}.txt`).forEach(fileName => {
+                                ZenOS.Apps.Terminal.print(fileName, 'info');
+                            });
+                        }
+                        break;
+                    // --- OTHER COMMANDS ---
+                    case 'whoami': ZenOS.Apps.Terminal.print(`User: ${ZenOS.state.user}`, 'success'); break;
+                    case 'neofetch': ZenOS.Apps.Terminal.print(`USER: ${ZenOS.state.user||'Guest'} | OS: ZenSpace v3.0`, 'success'); break;
+                    case 'date': ZenOS.Apps.Terminal.print(new Date().toLocaleString(), 'info'); break;
+                    case 'echo': ZenOS.Apps.Terminal.print(param, 'neutral'); break;
+                    case 'clear': document.getElementById('termOut').innerHTML = ''; break;
+                    case 'reboot': setTimeout(() => location.reload(), 1000); break;
+                    case 'logout': ZenOS.Auth.logout(); break;
+                    
+                    case 'lang':
+                        if(['tr', 'en', 'ru'].includes(param)) { ZenOS.Lang.set(param); ZenOS.Apps.Terminal.print(`Language changed to: ${param.toUpperCase()}`, 'success'); }
+                        else { ZenOS.Apps.Terminal.print("Usage: lang [tr / en / ru]", 'warn'); }
+                        break;
+
+                    case 'scene':
+                        const validScenes = ['rain', 'sea', 'forest', 'fire'];
+                        if(validScenes.includes(param)) {
+                            const map = {rain:0, sea:1, forest:2, fire:3};
+                            const cards = document.querySelectorAll('.env-card');
+                            ZenOS.Apps.Audio.scene(param, cards[map[param]]);
+                            ZenOS.Apps.Terminal.print(`Atmosphere switched to: ${param}`, 'success');
+                        } else { ZenOS.Apps.Terminal.print("Usage: scene [rain / sea / forest / fire]", 'warn'); }
+                        break;
+                        
+                    case 'weather':
+                        const targetLocation = param; 
+                        
+                        if (targetLocation) {
+                            // User provided a location (e.g., 'weather London')
+                            ZenOS.Apps.Terminal.print(`Querying satellite array for ${targetLocation}...`, 'warn');
+                            fetchWeather(targetLocation).then(weatherText => {
+                                ZenOS.Apps.Terminal.print(`[Weather Report for ${targetLocation}]`, 'info');
+                                ZenOS.Apps.Terminal.print(weatherText, 'success');
+                            }).catch(() => {
+                                ZenOS.Apps.Terminal.print("ERROR: Could not connect to weather service. Check network/API Key.", 'error');
+                            });
+                        } else {
+                            // No parameter provided, attempt dynamic geolocation
+                            ZenOS.Geo.fetchDynamicWeather().then(weatherText => {
+                                if (weatherText) {
+                                    // Weather text includes location info if successful
+                                    ZenOS.Apps.Terminal.print(weatherText, 'success');
+                                }
+                                // Error messages are handled inside fetchDynamicWeather
+                            });
+                        }
+                        break;
+                        
+                    case 'matrix':
+                        ZenOS.Apps.Terminal.inGame = true;
+                        ZenOS.Apps.Terminal.stage = 1;
+                        const story = TRANSLATIONS[ZenOS.state.lang].mx;
+                        ZenOS.Apps.Terminal.print(story.sys, 'error');
+                        setTimeout(()=> ZenOS.Apps.Terminal.print(ZenOS.Apps.Terminal.format(story.s0), 'success'), 1000);
+                        setTimeout(()=> ZenOS.Apps.Terminal.print(story.s1, 'success'), 2500);
+                        break;
+
+                    case 'rm':
+                        if (param) {
+                            // param: filename to delete
+                            const success = ZenOS.Apps.Notes.delete(param);
+                            
+                            if (success) {
+                                ZenOS.Apps.Terminal.print(`File deleted: ${param}.txt`, 'success');
+                            } else {
+                                ZenOS.Apps.Terminal.print(`Error: File ${param}.txt not found.`, 'error');
+                            }
+                        } else {
+                            ZenOS.Apps.Terminal.print("Usage: rm [filename]", 'warn');
+                        }
+                        break;
+                    
+                    case 'open': 
+                        if (['timer', 'kanban', 'studio', 'coach', 'terminal'].includes(param)) { ZenOS.WM.open(param); ZenOS.Apps.Terminal.print(`Launched ${param}`, 'success'); } 
+                        else ZenOS.Apps.Terminal.print("App not found", 'error'); break;
+                    
+                    case 'close': 
+                        ZenOS.WM.close('win-'+param); ZenOS.Apps.Terminal.print(`Closed ${param}`, 'warn'); break;
+                    
+                    case 'focus': 
+                        const m = parseInt(param);
+                        if(m){ ZenOS.Apps.Timer.set(m, {classList:{add:()=>{}}}); ZenOS.Apps.Timer.toggle(); ZenOS.Apps.Terminal.print(`Focus Timer: ${m}m set.`, 'success'); } 
+                        else ZenOS.Apps.Terminal.print("Usage: focus [min]", 'warn'); break;
+                    
+                    case 'task':
+                        if(param.startsWith('-a ')) { ZenOS.Apps.Kanban.add(param.replace('-a ','')); ZenOS.Apps.Terminal.print("Task added", 'success'); }
+                        else if(param==='-ls') { 
+                            const list = ZenOS.DB.user()?.kanban.todo || [];
+                            if(list.length === 0) ZenOS.Apps.Terminal.print("No tasks found.", 'info');
+                            list.forEach(t=> ZenOS.Apps.Terminal.print("[ ] "+t.text));
+                        } else ZenOS.Apps.Terminal.print("Usage: task -a [text]", 'warn');
+                        break;
+                    
+                    default: ZenOS.Apps.Terminal.print("Unknown command. Type 'help'.", 'error');
+                }
+                inp.value = '';
+                inp.focus();
+                
+            }
+        },
+    },
+    
+    // --- GEOLOCATION SERVICES ---
+    Geo: {
+        // 1. Gets latitude/longitude from the user's browser geolocation API
+        getCurrentLocation: () => {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    return reject("Geolocation not supported by this browser.");
+                }
+                // Use a timeout for faster feedback
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        resolve({
+                            lat: position.coords.latitude,
+                            lon: position.coords.longitude
+                        });
+                    },
+                    (error) => {
+                        // Handle user denial or inability to get location
+                        reject(`Geolocation error: ${error.message}.`);
+                    },
+                   { timeout: 15000, enableHighAccuracy: true }
+                );
+            });
+        },
+
+// ZenOS.Geo nesnesi içindeki fetchDynamicWeather fonksiyonu
+fetchDynamicWeather: async () => {
+    try {
+        ZenOS.Apps.Terminal.print(`Requesting Geolocation permission...`, 'warn');
+        const coords = await ZenOS.Geo.getCurrentLocation();
+        
+        const lat = coords.lat.toFixed(4);
+        const lon = coords.lon.toFixed(4);
+        const rawLocation = `Lat: ${lat}, Lon: ${lon}`;
+
+        ZenOS.Apps.Terminal.print(`Location acquired: ${rawLocation}. Analyzing environment...`, 'warn');
+        
+        // Instruct Gemini to perform reverse geocoding and fetch weather in one step using grounding search
+        const userQuery = `My current location is ${rawLocation}. Provide the current city, country, temperature, condition, and wind speed in one concise sentence.`;
+        
+        const payload = {
+            contents: [{ parts: [{ text: userQuery }] }],
+            tools: [{ "google_search": {} }],
+            systemInstruction: { parts: [{ text: "Act as a concise weather reporter, starting with the determined City/Country." }] },
+        };
+        
+        // Flash modelini kullanıyoruz
+        const MODEL_NAME = 'gemini-2.5-flash'; 
+        const apiUrl = `${API_URL_BASE}${MODEL_NAME}:generateContent?key=${API_KEY}`;
+        
+        const result = await retryFetch(apiUrl, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(payload) 
+        });
+        
+        return result.candidates?.[0]?.content?.parts?.[0]?.text || `Weather data unavailable for ${rawLocation}.`;
+        
+    } catch (e) {
+        // Geolocation hatası veya API hatası
+        ZenOS.Apps.Terminal.print(`ERROR: Geolocation or network failure: ${e}`, 'error');
+        return null;
+    }
+}
+    },
+    // --- UI FUNCTIONS ---
+    UI: {
+        toast: (m) => {
+            const t = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = m;
+            t.classList.add('active');
+            setTimeout(() => t.classList.remove('active'), 3000);
+        },
+        toggleCinema: () => {
+            document.body.classList.toggle('mode-cinema');
+            ZenOS.UI.toast("Cinema Mode Toggled");
+        },
+        toggleFull: () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+    },
+    
+    // --- VISUALS (Particles) ---
+    Visuals: {
+        init: () => {
+            const c = document.getElementById('particle-canvas');
+            const ctx = c.getContext('2d');
+            c.width = window.innerWidth; c.height = window.innerHeight;
+            window.addEventListener('resize', () => { c.width = window.innerWidth; c.height = window.innerHeight; });
+            const p = Array.from({ length: 50 }, () => ({ x: Math.random() * c.width, y: Math.random() * c.height, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5 }));
+            function loop() {
+                ctx.clearRect(0, 0, c.width, c.height); ctx.fillStyle = "rgba(255,255,255,0.2)";
+                p.forEach(pt => {
+                    pt.x += pt.vx; pt.y += pt.vy;
+                    if (pt.x < 0 || pt.x > c.width) pt.vx *= -1; if (pt.y < 0 || pt.y > c.height) pt.vy *= -1;
+                    ctx.beginPath(); ctx.arc(pt.x, pt.y, Math.random() * 2, 0, Math.PI * 2); ctx.fill();
+                }); requestAnimationFrame(loop);
+            } loop();
+        }
+    }
+};
+
+// Start the System
+window.onload = ZenOS.Boot;
+</script>
+</body>
+</html>
