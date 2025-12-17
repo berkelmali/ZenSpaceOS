@@ -1,26 +1,23 @@
 {
   "name": "zenspace-os",
   "version": "1.0.0",
-  "description": "",
+  "description": "ZenSpace OS",
   "main": "server.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/berkelmali/ZenSpaceOS.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/berkelmali/ZenSpaceOS/issues"
-  },
-  "homepage": "https://github.com/berkelmali/ZenSpaceOS#readme",
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^5.2.1"
+    "express": "^4.18.2",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
