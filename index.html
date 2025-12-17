@@ -358,28 +358,60 @@
             </div>
 
  <!-- AI COACH WINDOW (TEK VE DOĞRU YAPILANDIRILMIŞ PENCERE) -->
-<div class="window" id="win-coach" style="top:150px; left:500px; width:380px; height: 500px;">
-    <div class="win-bar" onmousedown="ZenOS.WM.drag(event, 'win-coach')">
-        <div class="win-title"><i class="ph-bold ph-brain"></i> Zen Coach</div>
-        <div class="win-ctrls"><button class="win-btn wb-min" onclick="ZenOS.WM.min('win-coach')"></button><button class="win-btn wb-cls" onclick="ZenOS.WM.close('win-coach')"></button></div>
-    </div>
-    <div class="win-content" style="display:flex; flex-direction:column;">
-        <!-- Sohbet Geçmişi Alanı (Cevapların görüneceği yer burasıdır) -->
-        <div id="coachChatHistory" style="flex: 1; overflow-y: auto; margin-bottom: 10px; padding-right: 5px;">
-            <!-- Başlangıç mesajı JS init() tarafından eklenecek. -->
-        </div>
-        <!-- Giriş Alanı -->
-        <div class="input-wrapper" style="margin-top: auto;">
-            <input type="text" id="coachInput" class="auth-input" placeholder="Ask Zen Coach..." style="padding:10px 14px; margin-bottom:0; flex: 1;">
-        </div>
-        <!-- Butonlar -->
-        <div style="display:flex; gap:10px; margin-top: 10px;">
-            <button class="act-btn" style="background:rgba(255,255,255,0.1); color:#fff; font-size:0.8rem;" onclick="ZenOS.Apps.Coach.analyze()">Analyze Data</button>
-            <button class="act-btn" style="background:var(--accent); color:#000; font-size:0.8rem;" id="coachSendBtn" onclick="ZenOS.Apps.Coach.sendQuery()">SEND (ENTER)</button>
-        </div>
-    </div>
-</div>
 
+<div class="window" id="win-coach" style="top:150px; left:500px; width:380px; height: 500px;">
+
+    <div class="win-bar" onmousedown="ZenOS.WM.drag(event, 'win-coach')">
+
+        <div class="win-title"><i class="ph-bold ph-brain"></i> Zen Coach</div>
+
+        <div class="win-ctrls">
+
+            <button class="win-btn wb-min" onclick="ZenOS.WM.min('win-coach')"></button>
+
+            <button class="win-btn wb-cls" onclick="ZenOS.WM.close('win-coach')"></button>
+
+        </div>
+
+    </div>
+
+    <div class="win-content" style="display:flex; flex-direction:column; height: 100%;">
+
+        <!-- Sohbet Geçmişi Alanı (Cevapların görüneceği yer burasıdır) -->
+
+        <div id="coachChatHistory" style="flex: 1; overflow-y: auto; margin-bottom: 10px; padding-right: 5px;">
+
+            <!-- Başlangıç mesajı JS init() tarafından eklenecek. -->
+
+        </div>
+
+       
+
+        <!-- Giriş Alanı ve Kontroller -->
+
+        <div style="margin-top: auto;">
+
+            <div class="input-wrapper">
+
+                <input type="text" id="coachInput" class="auth-input" placeholder="Ask Zen Coach..." style="padding:10px 14px; margin-bottom:0; width: 100%;">
+
+            </div>
+
+            <!-- Butonlar -->
+
+            <div style="display:flex; gap:10px; margin-top: 10px;">
+
+                <button class="act-btn" style="flex: 1; background:rgba(255,255,255,0.1); color:#fff; font-size:0.8rem;" onclick="ZenOS.Apps.Coach.analyze()">Analyze Data</button>
+
+                <button class="act-btn" style="flex: 1; background:var(--accent); color:#000; font-size:0.8rem;" id="coachSendBtn" onclick="ZenOS.Apps.Coach.sendQuery()">SEND (ENTER)</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
             <div class="window term-bg" id="win-terminal" style="top:350px; left:400px; width:500px; height:300px;">
                 <div class="win-bar" style="background:#1a1a1a;" onmousedown="ZenOS.WM.drag(event, 'win-terminal')">
                     <div class="win-title" style="color:#2ed573"><i class="ph-bold ph-terminal"></i> root@zen:~</div>
