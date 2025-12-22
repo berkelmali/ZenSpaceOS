@@ -1192,7 +1192,7 @@ Coach: {
                     case 'help':
                         const helpText = `
                         <div style="margin-top:5px; margin-bottom:5px; line-height:1.6; padding: 5px;">
-                            <span style="color:#2ed573; font-weight:bold; border-bottom:1px solid #2ed573; padding-bottom: 2px;">ZENSPACE KERNEL COMMANDS v4.4</span><br>
+                            <span style="color:#2ed573; font-weight:bold; border-bottom:1px solid #2ed573; padding-bottom: 2px;">ZENSPACE KERNEL COMMANDS v4.5</span><br>
                             
                             <br><span style="color:#3b82f6; font-weight:bold;">[ CORE & APPLICATIONS ]</span><br>
                             <b style="color:#fff;">open</b> <span style="color:#aaa;">[app]</span>  : timer, kanban, studio, coach<br>
@@ -1202,6 +1202,7 @@ Coach: {
                             <br><span style="color:#ffa502; font-weight:bold;">[ SYSTEM & INFO ]</span><br>
                             <b style="color:#fff;">whoami</b>    : Current user info<br>
                             <b style="color:#fff;">neofetch</b>  : System info summary<br>
+                            <b style="color:#fff;">history</b>   : View command history<br>
                             <b style="color:#fff;">ls</b>        : List apps/files<br>
                             <b style="color:#fff;">reboot</b>    : Restart ZenSpace OS<br>
                             <b style="color:#fff;">logout</b>    : End session<br>
@@ -1217,7 +1218,10 @@ Coach: {
                             <b style="color:#fff;">lang</b> <span style="color:#aaa;">[code]</span>  : Change language (tr / en / ru)<br>
                             <b style="color:#fff;">scene</b> <span style="color:#aaa;">[name]</span>: Set atmosphere (rain / sea / forest / fire)<br>
                             <b style="color:#fff;">weather</b>    : Get real-time weather (Uses Geo-location if no argument provided)<br>
+
+                            <br><span style="color:#00d2d3; font-weight:bold;">[ EXTRA ]</span><br>
                             <b style="color:#fff;">matrix</b>    : Enter the simulation (Game)<br>
+                            <b style="color:#fff;">coinflip</b>   : Heads or Tails?<br>
                         </div>`;
                         ZenOS.Apps.Terminal.print(helpText);
                         break;
@@ -1326,7 +1330,23 @@ Coach: {
                         setTimeout(()=> ZenOS.Apps.Terminal.print(ZenOS.Apps.Terminal.format(story.s0), 'success'), 1000);
                         setTimeout(()=> ZenOS.Apps.Terminal.print(story.s1, 'success'), 2500);
                         break;
-
+                    case 'history':
+                        const hist = ZenOS.Apps.Terminal.history;
+                        if(hist.length === 0) {
+                            ZenOS.Apps.Terminal.print("History is empty.", 'warn');
+                        } else {
+                            hist.forEach((h, i) => {
+                                ZenOS.Apps.Terminal.print(`${i + 1}  ${h}`, 'neutral');
+                            });
+                        }
+                        break;
+                        case 'coinflip':
+                        const resultFlip = Math.random() < 0.5 ? 'HEADS' : 'TAILS';
+                        ZenOS.Apps.Terminal.print(`Coin is in the air...`, 'warn');
+                        setTimeout(() => {
+                             ZenOS.Apps.Terminal.print(`Result: ${resultFlip}`, 'success');
+                        }, 1000);
+                        break;
                     case 'rm':
                         if (param) {
                             // param: filename to delete
