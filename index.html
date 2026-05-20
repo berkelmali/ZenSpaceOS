@@ -1526,6 +1526,63 @@ fetchDynamicWeather: async () => {
         }
     },
 
+
+    // --- SCREENSAVER ---
+    Screensaver: {
+        _timer: null, _active: false,
+        IDLE_MS: 180000,
+        init: () => {
+            const reset = () => {
+                if(ZenOS.Screensaver._active) ZenOS.Screensaver.deactivate();
+                clearTimeout(ZenOS.Screensaver._timer);
+                ZenOS.Screensaver._timer = setTimeout(ZenOS.Screensaver.activate, ZenOS.Screensaver.IDLE_MS);
+            };
+            ['mousemove','keydown','click','touchstart'].forEach(ev => document.addEventListener(ev, reset, {passive:true}));
+            reset();
+            const c = document.getElementById('ss-canvas');
+            if(!c) return;
+            const ctx = c.getContext('2d');
+            c.width = window.innerWidth; c.height = window.innerHeight;
+            const p = Array.from({length:80}, () => ({
+                x: Math.random()*c.width, y: Math.random()*c.height,
+                vx: (Math.random()-0.5)*0.3, vy: (Math.random()-0.5)*0.3, r: Math.random()*1.5+0.5
+            }));
+            function ssLoop() {
+                if(!document.getElementById('screensaver').classList.contains('active')) { requestAnimationFrame(ssLoop); return; }
+                ctx.clearRect(0,0,c.width,c.height);
+                p.forEach(pt => {
+                    pt.x += pt.vx; pt.y += pt.vy;
+                    if(pt.x<0||pt.x>c.width) pt.vx*=-1;
+                    if(pt.y<0||pt.y>c.height) pt.vy*=-1;
+                    ctx.beginPath(); ctx.arc(pt.x,pt.y,pt.r,0,Math.PI*2);
+                    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fill();
+                });
+                requestAnimationFrame(ssLoop);
+            }
+            ssLoop();
+        },
+        activate: () => { if(ZenOS.Screensaver._active) return; ZenOS.Screensaver._active = true; document.getElementById('screensaver')?.classList.add('active'); },
+        deactivate: () => { ZenOS.Screensaver._active = false; document.getElementById('screensaver')?.classList.remove('active'); }
+    },
+
+    // --- CONTEXT MENU ---
+    ContextMenu: {
+        init: () => {
+            document.addEventListener('contextmenu', (e) => {
+                if(e.target.closest('.window') || e.target.closest('.dock') || e.target.closest('.auth-card')) return;
+                e.preventDefault();
+                const menu = document.getElementById('ctx-menu');
+                if(!menu) return;
+                const x = Math.min(e.clientX, window.innerWidth - 200);
+                const y = Math.min(e.clientY, window.innerHeight - 280);
+                menu.style.left = x + 'px'; menu.style.top = y + 'px';
+                menu.classList.add('open');
+            });
+            document.addEventListener('click', () => ZenOS.ContextMenu.close());
+        },
+        close: () => document.getElementById('ctx-menu')?.classList.remove('open')
+    },
+
 // Start the System
 window.onload = ZenOS.Boot;
 </script>
