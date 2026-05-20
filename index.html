@@ -584,34 +584,6 @@ const ZenOS = {
     },
 
     // --- BOOT AND INITIALIZATION ---
-// --- BOOT AND INITIALIZATION ---
-    Boot: () => {
-        const savedLang = localStorage.getItem('zen_lang') || 'en';
-        if(ZenOS.Lang) ZenOS.Lang.set(savedLang);
-
-        setTimeout(() => {
-            const bootScreen = document.getElementById('boot-screen');
-            if(bootScreen) bootScreen.style.display = 'none';
-        }, 1500);
-
-        ZenOS.Visuals.init();
-        ZenOS.Apps.Terminal.init();
-// FIX: Coach'un init fonksiyonu, DOM hazırlandıktan sonra çağrılıyor.
-// Bu, Coach'taki input event listener'larının doğru kurulmasını sağlar.
-        ZenOS.Apps.Coach.init();
-        
-        // --- CRITICAL NOTE RENDER CHECK (Initial Load) ---
-        if (ZenOS.Apps.Notes && ZenOS.DB.user()) {
-            ZenOS.Apps.Notes.render();
-        }
-
-        document.getElementById('authForm').addEventListener('submit', ZenOS.Auth.submit);
-        document.getElementById('toggleAuth').addEventListener('click', ZenOS.Auth.toggle);
-        document.getElementById('termInput').addEventListener('keypress', (e) => {
-            if(e.key === 'Enter') ZenOS.Apps.Terminal.exec();
-        });
-
-        // KEYBOARD SHORTCUTS
         document.addEventListener('keydown', (e) => {
             if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
             const k = e.key.toLowerCase();
