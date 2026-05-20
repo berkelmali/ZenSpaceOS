@@ -584,15 +584,49 @@ const ZenOS = {
     },
 
     // --- BOOT AND INITIALIZATION ---
-        document.addEventListener('keydown', (e) => {
-            if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            const k = e.key.toLowerCase();
-            if (e.code === 'Space') { e.preventDefault(); if (ZenOS.state.user) ZenOS.Apps.Timer.toggle(); }
-            else if (k === 'h') ZenOS.UI.toggleCinema();
-            else if (k === 'm') ZenOS.Apps.Audio.mute();
-            else if (k === 'f') ZenOS.UI.toggleFull();
-        });
-    },
+    Boot: () => {
+        const savedLang = localStorage.getItem('zen_lang') || 'en';
+        if(ZenOS.Lang) ZenOS.Lang.set(savedLang);
+
+        setTimeout(() => {
+            const bootScreen = document.getElementById('boot-screen');
+            if(bootScreen) bootScreen.style.display = 'none';
+        }, 1500);
+
+        ZenOS.Visuals.init();
+        ZenOS.Apps.Terminal.init();
+        ZenOS.Apps.Coach.init();
+        ZenOS.Clock.init();
+        ZenOS.Screensaver.init();
+        ZenOS.ContextMenu.init();
+        ZenOS.Apps.Habits.render();
+
+        const savedTheme = localStorage.getItem('zen_theme');
+        if(savedTheme) ZenOS.Theme.set(savedTheme, null, true);
+
+        if (ZenOS.Apps.Notes && ZenOS.DB.user()) {
+            ZenOS.Apps.Notes.render();
+        }
+
+        document.getElementById('authForm').addEventListener('submit', ZenOS.Auth.submit);
+        document.getElementById('toggleAuth').addEventListener('click', ZenOS.Auth.toggle);
+        document.getElementById('termInput').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') ZenOS.Apps.Terminal.exec();
+        });
+
+        // KEYBOARD SHORTCUTS
+        document.addEventListener('keydown', (e) => {
+            if((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); ZenOS.Spotlight.open(); return; }
+            if(e.key === 'Escape') { ZenOS.Spotlight.close(); ZenOS.ContextMenu.close(); return; }
+            const tag = e.target.tagName;
+            if(tag === 'INPUT' || tag === 'TEXTAREA') return;
+            const k = e.key.toLowerCase();
+            if (e.code === 'Space') { e.preventDefault(); if (ZenOS.state.user) ZenOS.Apps.Timer.toggle(); }
+            else if (k === 'h') ZenOS.UI.toggleCinema();
+            else if (k === 'm') ZenOS.Apps.Audio.mute();
+            else if (k === 'f') ZenOS.UI.toggleFull();
+        });
+    },
 
     // --- LANGUAGE MANAGER ---
     Lang: {
