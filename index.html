@@ -425,6 +425,7 @@
             <div class="dock-item" onclick="ZenOS.WM.open('coach')" id="icon-win-coach" title="AI Coach"><i class="ph-fill ph-brain"></i></div>
             <div class="dock-item" onclick="ZenOS.WM.open('terminal')" id="icon-win-terminal" title="Terminal"><i class="ph-fill ph-terminal-window"></i></div>
             <div style="width:1px; background:rgba(255,255,255,0.1); margin:0 5px;"></div>
+            <div class="dock-item" onclick="ZenOS.Spotlight.open()" title="Search (Ctrl+K)"><i class="ph-fill ph-magnifying-glass"></i></div>
             <div class="dock-item" onclick="ZenOS.UI.toggleCinema()" title="Cinema Mode (H)"><i class="ph-fill ph-eye"></i></div>
             <div class="dock-item" onclick="ZenOS.UI.toggleFull()" title="Fullscreen (F)"><i class="ph-fill ph-arrows-out"></i></div>
         </div>
@@ -1581,6 +1582,65 @@ fetchDynamicWeather: async () => {
             document.addEventListener('click', () => ZenOS.ContextMenu.close());
         },
         close: () => document.getElementById('ctx-menu')?.classList.remove('open')
+    },
+
+
+    // --- SPOTLIGHT SEARCH ---
+    Spotlight: {
+        _idx: 0, _items: [],
+        open: () => {
+            const ol = document.getElementById('spotlight-overlay');
+            const inp = document.getElementById('spotlight-input');
+            if(!ol || !inp) return;
+            ol.classList.add('open'); inp.value = ''; inp.focus();
+            ZenOS.Spotlight.query('');
+        },
+        close: () => { document.getElementById('spotlight-overlay')?.classList.remove('open'); },
+        query: (q) => {
+            const allItems = [
+                { icon:'ph-clock', label:'Timer', desc:'Focus Timer', action: () => ZenOS.WM.open('timer') },
+                { icon:'ph-kanban', label:'Tasks', desc:'Kanban Board', action: () => ZenOS.WM.open('kanban') },
+                { icon:'ph-faders', label:'Studio', desc:'Audio Engine', action: () => ZenOS.WM.open('studio') },
+                { icon:'ph-brain', label:'AI Coach', desc:'Chat with Zen Coach', action: () => ZenOS.WM.open('coach') },
+                { icon:'ph-terminal-window', label:'Terminal', desc:'Command Line Interface', action: () => ZenOS.WM.open('terminal') },
+                { icon:'ph-chart-bar', label:'Stats', desc:'Productivity Analytics', action: () => { ZenOS.WM.open('stats'); ZenOS.Apps.Stats.refresh(); } },
+                { icon:'ph-check-circle', label:'Habits', desc:'Daily Habit Tracker', action: () => ZenOS.WM.open('habits') },
+                { icon:'ph-cloud-rain', label:'Rain', desc:'Switch to Rain scene', action: () => ZenOS.Apps.Audio.scene('rain', document.querySelectorAll('.env-card')[0]) },
+                { icon:'ph-waves', label:'Sea', desc:'Switch to Sea scene', action: () => ZenOS.Apps.Audio.scene('sea', document.querySelectorAll('.env-card')[1]) },
+                { icon:'ph-tree', label:'Forest', desc:'Switch to Forest scene', action: () => ZenOS.Apps.Audio.scene('forest', document.querySelectorAll('.env-card')[2]) },
+                { icon:'ph-fire', label:'Fire', desc:'Switch to Fire scene', action: () => ZenOS.Apps.Audio.scene('fire', document.querySelectorAll('.env-card')[3]) },
+                { icon:'ph-eye', label:'Cinema Mode', desc:'Toggle Cinema Mode (H)', action: () => ZenOS.UI.toggleCinema() },
+                { icon:'ph-arrows-out', label:'Fullscreen', desc:'Toggle Fullscreen (F)', action: () => ZenOS.UI.toggleFull() },
+                { icon:'ph-speaker-slash', label:'Mute', desc:'Toggle Audio Mute (M)', action: () => ZenOS.Apps.Audio.mute() },
+                { icon:'ph-sign-out', label:'Logout', desc:'End session', action: () => ZenOS.Auth.logout() },
+            ];
+            const notes = ZenOS.DB.user()?.notes || [];
+            notes.forEach(n => { allItems.push({ icon:'ph-file-text', label: n.title + '.txt', desc:'Note file', action: () => { ZenOS.Spotlight.close(); ZenOS.Apps.Notes.show(n); } }); });
+            const filtered = q ? allItems.filter(i => i.label.toLowerCase().includes(q.toLowerCase()) || i.desc.toLowerCase().includes(q.toLowerCase())) : allItems;
+            ZenOS.Spotlight._items = filtered; ZenOS.Spotlight._idx = 0;
+            ZenOS.Spotlight.renderResults(filtered);
+        },
+        renderResults: (items) => {
+            const el = document.getElementById('spotlight-results');
+            if(!el) return;
+            if(items.length === 0) { el.innerHTML = '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:0.85rem;">No results found</div>'; return; }
+            el.innerHTML = items.map((item, i) => `
+                <div class="spotlight-item ${i === 0 ? 'sp-selected' : ''}" onclick="ZenOS.Spotlight.exec(${i})" onmouseover="ZenOS.Spotlight.hover(${i})">
+                    <i class="ph-fill ${item.icon}"></i>
+                    <span>${item.label}</span>
+                    <span style="font-size:0.75rem; color:var(--text-muted); flex:1; padding-left:8px;">${item.desc}</span>
+                    <span class="spotlight-kbd">↵</span>
+                </div>`).join('');
+        },
+        hover: (i) => { ZenOS.Spotlight._idx = i; document.querySelectorAll('.spotlight-item').forEach((el, j) => { el.classList.toggle('sp-selected', j === i); }); },
+        nav: (e) => {
+            const items = ZenOS.Spotlight._items;
+            if(e.key === 'ArrowDown') { e.preventDefault(); ZenOS.Spotlight.hover(Math.min(ZenOS.Spotlight._idx+1, items.length-1)); }
+            else if(e.key === 'ArrowUp') { e.preventDefault(); ZenOS.Spotlight.hover(Math.max(ZenOS.Spotlight._idx-1, 0)); }
+            else if(e.key === 'Enter') { ZenOS.Spotlight.exec(ZenOS.Spotlight._idx); }
+            else if(e.key === 'Escape') { ZenOS.Spotlight.close(); }
+        },
+        exec: (i) => { const item = ZenOS.Spotlight._items[i]; if(item) { ZenOS.Spotlight.close(); item.action(); } }
     },
 
 // Start the System
