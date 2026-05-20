@@ -296,6 +296,8 @@
             <div class="d-icon" onclick="ZenOS.WM.open('studio')"><i class="ph-fill ph-faders" style="color:#f59e0b"></i> <span>Studio</span></div>
             <div class="d-icon" onclick="ZenOS.WM.open('coach')"><i class="ph-fill ph-brain" style="color:#8b5cf6"></i> <span>AI Coach</span></div>
             <div class="d-icon" onclick="ZenOS.WM.open('terminal')"><i class="ph-fill ph-terminal-window" style="color:#fff"></i> <span>Term</span></div>
+            <div class="d-icon" onclick="ZenOS.WM.open('stats')"><i class="ph-fill ph-chart-bar" style="color:#ec4899"></i> <span>Stats</span></div>
+            <div class="d-icon" onclick="ZenOS.WM.open('habits')"><i class="ph-fill ph-check-circle" style="color:#22c55e"></i> <span>Habits</span></div>
 
             <div id="notes-container" style="display:flex; flex-wrap: wrap; gap:25px;">
             </div>
@@ -424,6 +426,8 @@
             <div class="dock-item" onclick="ZenOS.WM.open('studio')" id="icon-win-studio" title="Studio"><i class="ph-fill ph-faders"></i></div>
             <div class="dock-item" onclick="ZenOS.WM.open('coach')" id="icon-win-coach" title="AI Coach"><i class="ph-fill ph-brain"></i></div>
             <div class="dock-item" onclick="ZenOS.WM.open('terminal')" id="icon-win-terminal" title="Terminal"><i class="ph-fill ph-terminal-window"></i></div>
+            <div class="dock-item" onclick="ZenOS.WM.open('stats')" id="icon-win-stats" title="Stats"><i class="ph-fill ph-chart-bar"></i></div>
+            <div class="dock-item" onclick="ZenOS.WM.open('habits')" id="icon-win-habits" title="Habits"><i class="ph-fill ph-check-circle"></i></div>
             <div style="width:1px; background:rgba(255,255,255,0.1); margin:0 5px;"></div>
             <div class="dock-item" onclick="ZenOS.Spotlight.open()" title="Search (Ctrl+K)"><i class="ph-fill ph-magnifying-glass"></i></div>
             <div class="dock-item" onclick="ZenOS.UI.toggleCinema()" title="Cinema Mode (H)"><i class="ph-fill ph-eye"></i></div>
@@ -676,6 +680,7 @@ const ZenOS = {
             if(d && d.stats) document.getElementById('statSess').innerText = d.stats.s;
 
             ZenOS.Apps.Kanban.render();
+            ZenOS.Apps.Stats.refresh();
             // --- CRITICAL FIX: DRAW NOTES ON LOGIN ---
             if (ZenOS.Apps.Notes) ZenOS.Apps.Notes.render(); 
             
@@ -1100,6 +1105,80 @@ Coach: {
             
             }
         },
+
+        // --- STATS APP ---
+        Stats: {
+            refresh: () => {
+                if(!ZenOS.state.user) return;
+                const d = ZenOS.DB.user(); if(!d) return;
+                const stats = d.stats || {s:0,m:0};
+                const kanban = d.kanban || {todo:[],doing:[],done:[]};
+                document.getElementById('st-sessions').innerText = stats.s || 0;
+                document.getElementById('st-minutes').innerText = stats.m || 0;
+                document.getElementById('st-tasks').innerText = kanban.done.length;
+                const barsEl = document.getElementById('stats-bars'); if(!barsEl) return;
+                barsEl.innerHTML = `
+                    <div class="stats-bar-wrap">
+                        <div class="stats-bar-label"><span>Focus Time</span><span>${stats.m}m</span></div>
+                        <div class="stats-bar-bg"><div class="stats-bar-fill" style="width:${Math.min(100,stats.m/Math.max(stats.m,1)*100)}%"></div></div>
+                    </div>
+                    <div class="stats-bar-wrap">
+                        <div class="stats-bar-label"><span>Tasks Done</span><span>${kanban.done.length}</span></div>
+                        <div class="stats-bar-bg"><div class="stats-bar-fill" style="width:${Math.min(100,kanban.done.length/Math.max(kanban.todo.length+kanban.doing.length+kanban.done.length,1)*100)}%; background:#22c55e;"></div></div>
+                    </div>
+                    <div class="stats-bar-wrap">
+                        <div class="stats-bar-label"><span>Sessions</span><span>${stats.s}</span></div>
+                        <div class="stats-bar-bg"><div class="stats-bar-fill" style="width:${Math.min(100,stats.s/Math.max(stats.s,10)*100)}%; background:#a855f7;"></div></div>
+                    </div>`;
+            }
+        },
+
+        // --- HABIT TRACKER APP ---
+        Habits: {
+            _todayKey: () => new Date().toISOString().slice(0,10),
+            _data: () => { const raw = localStorage.getItem('zen_habits'); return raw ? JSON.parse(raw) : { habits: [], done: {}, streaks: {} }; },
+            _save: (d) => localStorage.setItem('zen_habits', JSON.stringify(d)),
+            add: () => {
+                const inp = document.getElementById('habitInput'); if(!inp) return;
+                const name = inp.value.trim(); if(!name) return;
+                const d = ZenOS.Apps.Habits._data();
+                if(d.habits.includes(name)) { ZenOS.UI.toast('Habit already exists'); return; }
+                d.habits.push(name); ZenOS.Apps.Habits._save(d); inp.value = '';
+                ZenOS.Apps.Habits.render(); ZenOS.UI.toast('Habit added!');
+            },
+            toggle: (name) => {
+                const d = ZenOS.Apps.Habits._data();
+                const today = ZenOS.Apps.Habits._todayKey();
+                if(!d.done[today]) d.done[today] = [];
+                const idx = d.done[today].indexOf(name);
+                if(idx === -1) { d.done[today].push(name); if(!d.streaks[name]) d.streaks[name]=0; d.streaks[name]++; }
+                else { d.done[today].splice(idx,1); if(d.streaks[name]>0) d.streaks[name]--; }
+                ZenOS.Apps.Habits._save(d); ZenOS.Apps.Habits.render();
+            },
+            remove: (name) => {
+                const d = ZenOS.Apps.Habits._data();
+                d.habits = d.habits.filter(h => h !== name);
+                ZenOS.Apps.Habits._save(d); ZenOS.Apps.Habits.render();
+            },
+            render: () => {
+                const el = document.getElementById('habit-list'); if(!el) return;
+                const d = ZenOS.Apps.Habits._data();
+                const today = ZenOS.Apps.Habits._todayKey();
+                const todayDone = d.done[today] || [];
+                if(d.habits.length === 0) { el.innerHTML = '<div style="color:var(--text-muted); font-size:0.82rem; text-align:center; padding:20px;">No habits yet.<br>Add one below!</div>'; return; }
+                el.innerHTML = d.habits.map(h => {
+                    const done = todayDone.includes(h);
+                    const streak = d.streaks[h] || 0;
+                    return `<div class="habit-item">
+                        <div class="habit-check ${done ? 'done' : ''}" onclick="ZenOS.Apps.Habits.toggle('${h.replace(/'/g,"\'")}')"></div>
+                        <span class="habit-name ${done ? 'done-name' : ''}">${h}</span>
+                        <span class="habit-streak">${streak > 0 ? '🔥'+streak : ''}</span>
+                        <span class="habit-del" onclick="ZenOS.Apps.Habits.remove('${h.replace(/'/g,"\'")}')">✕</span>
+                    </div>`;
+                }).join('');
+            }
+        },
+
         // --- TERMINAL (ULTIMATE: FIXES APPLIED) ---
         Terminal: {
             history: [], historyIndex: -1, inGame: false, stage: 0,
