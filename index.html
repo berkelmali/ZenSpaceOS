@@ -565,6 +565,7 @@ const ZenOS = {
         user: null, lang: 'en', scene: 'rain', vol: 0.5, z: 100, 
         timer: { val: 1500, init: 1500, on: false, id: null }, 
         muted: false, 
+        _bootTime: Date.now(),
         // Default values for notes are not stored here to prevent empty DB writes.
     },
     
@@ -1445,7 +1446,71 @@ Coach: {
                             });
                         }
                         break;
-                        case 'coinflip':
+    
+                    case 'calc':
+                        if(param) {
+                            try {
+                                const safe = param.replace(/[^0-9+\-*/().% ]/g,'');
+                                if(!safe) throw new Error('Invalid expression');
+                                const result = Function('"use strict"; return (' + safe + ')')();
+                                ZenOS.Apps.Terminal.print(`${safe} = <b style="color:#fff">${result}</b>`, 'success');
+                            } catch { ZenOS.Apps.Terminal.print('Error: Invalid expression. Example: calc 2+3*4', 'error'); }
+                        } else { ZenOS.Apps.Terminal.print('Usage: calc [expression] (e.g. calc 25*4)', 'warn'); }
+                        break;
+
+                    case 'dice':
+                        const sides = parseInt(param) || 6;
+                        if(sides < 2 || sides > 1000) { ZenOS.Apps.Terminal.print('Usage: dice [sides] (e.g. dice 20)', 'warn'); break; }
+                        ZenOS.Apps.Terminal.print(`Rolling a d${sides}...`, 'warn');
+                        setTimeout(() => {
+                            const roll = Math.floor(Math.random() * sides) + 1;
+                            ZenOS.Apps.Terminal.print(`🎲 Result: <b style="color:#fff; font-size:1.1em">${roll}</b> / ${sides}`, 'success');
+                        }, 600);
+                        break;
+
+                    case 'quote':
+                        const quotes = [
+                            "The secret of getting ahead is getting started. — Mark Twain",
+                            "Deep work is the ability to focus without distraction. — Cal Newport",
+                            "Done is better than perfect. — Sheryl Sandberg",
+                            "Your future is created by what you do today. — Robert Kiyosaki",
+                            "Focus is the art of knowing what to ignore. — James Clear",
+                            "Small daily improvements are the key to staggering long-term results.",
+                            "The successful warrior is the average man, with laser-like focus. — Bruce Lee"
+                        ];
+                        const q = quotes[Math.floor(Math.random() * quotes.length)];
+                        ZenOS.Apps.Terminal.print(`<i style="color:#a5b4fc">"${q}"</i>`, 'neutral');
+                        break;
+
+                    case 'uptime':
+                        const upNow = Date.now();
+                        const upSec = Math.floor((upNow - (ZenOS.state._bootTime || upNow)) / 1000);
+                        const upMin = Math.floor(upSec / 60);
+                        const upHr = Math.floor(upMin / 60);
+                        ZenOS.Apps.Terminal.print(`Session uptime: <b style="color:#fff">${upHr}h ${upMin%60}m ${upSec%60}s</b>`, 'success');
+                        break;
+
+                    case 'stats':
+                        const uStats = ZenOS.DB.user()?.stats || {s:0,m:0};
+                        const kStats = ZenOS.DB.user()?.kanban || {todo:[],doing:[],done:[]};
+                        ZenOS.Apps.Terminal.print(`<span style="color:#a855f7; font-weight:bold;">[ PRODUCTIVITY REPORT ]</span>`, 'neutral');
+                        ZenOS.Apps.Terminal.print(`Focus Sessions: <b style="color:#fff">${uStats.s}</b>`, 'info');
+                        ZenOS.Apps.Terminal.print(`Minutes Focused: <b style="color:#fff">${uStats.m}</b>`, 'info');
+                        ZenOS.Apps.Terminal.print(`Tasks — Todo: <b style="color:#fff">${kStats.todo.length}</b> | Doing: <b style="color:#fff">${kStats.doing.length}</b> | Done: <b style="color:#fff">${kStats.done.length}</b>`, 'info');
+                        break;
+
+                    case 'export':
+                        if(!ZenOS.state.user) { ZenOS.Apps.Terminal.print('Login required.', 'error'); break; }
+                        const exportData = ZenOS.DB.user();
+                        const blob = new Blob([JSON.stringify(exportData, null, 2)], {type:'application/json'});
+                        const exportUrl = URL.createObjectURL(blob);
+                        const exportA = document.createElement('a');
+                        exportA.href = exportUrl; exportA.download = `zenspace_${ZenOS.state.user}_export.json`;
+                        exportA.click(); URL.revokeObjectURL(exportUrl);
+                        ZenOS.Apps.Terminal.print(`Data exported: zenspace_${ZenOS.state.user}_export.json`, 'success');
+                        break;
+
+                    case 'coinflip':
                         const resultFlip = Math.random() < 0.5 ? 'HEADS' : 'TAILS';
                         ZenOS.Apps.Terminal.print(`Coin is in the air...`, 'warn');
                         setTimeout(() => {
@@ -1468,7 +1533,7 @@ Coach: {
                         break;
                     
                     case 'open': 
-                        if (['timer', 'kanban', 'studio', 'coach', 'terminal'].includes(param)) { ZenOS.WM.open(param); ZenOS.Apps.Terminal.print(`Launched ${param}`, 'success'); } 
+                        if (['timer', 'kanban', 'studio', 'coach', 'terminal', 'stats', 'habits'].includes(param)) { ZenOS.WM.open(param); ZenOS.Apps.Terminal.print(`Launched ${param}`, 'success'); } 
                         else ZenOS.Apps.Terminal.print("App not found", 'error'); break;
                     
                     case 'close': 
