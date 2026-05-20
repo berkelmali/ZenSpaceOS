@@ -150,9 +150,9 @@
             display: flex; flex-direction: column; overflow: hidden;
             opacity: 0; transform: scale(0.95) translateY(20px);
             transition: opacity 0.3s, transform 0.3s, width 0.2s, height 0.2s;
-            pointer-events: auto; min-width: 300px; min-height: 200px;
+            pointer-events: none; min-width: 300px; min-height: 200px;
         }
-        .window.open { opacity: 1; transform: scale(1) translateY(0); }
+        .window.open { opacity: 1; transform: scale(1) translateY(0); pointer-events: auto; }
         .window.minimized { opacity: 0; transform: scale(0.8) translateY(100px); pointer-events: none; }
         .window.active { border-color: var(--surface-highlight); z-index: 200 !important; box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 40px 80px rgba(0,0,0,0.8); }
 
@@ -462,6 +462,53 @@
                     <input type="text" class="term-in" id="termInput" autocomplete="off">
                 </div>
             </div>
+
+            <!-- STATS WINDOW -->
+            <div class="window" id="win-stats" style="top:120px; left:350px; width:420px;">
+                <div class="win-bar" onmousedown="ZenOS.WM.drag(event, 'win-stats')">
+                    <div class="win-title"><i class="ph-bold ph-chart-bar"></i> Stats</div>
+                    <div class="win-ctrls">
+                        <button class="win-btn wb-min" onclick="ZenOS.WM.min('win-stats')"></button>
+                        <button class="win-btn wb-cls" onclick="ZenOS.WM.close('win-stats')"></button>
+                    </div>
+                </div>
+                <div class="win-content" style="padding:20px;">
+                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px;">
+                        <div style="text-align:center; padding:16px; background:rgba(255,255,255,0.05); border-radius:12px;">
+                            <div style="font-size:1.8rem; font-weight:800; color:var(--accent);" id="st-sessions">0</div>
+                            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">Sessions</div>
+                        </div>
+                        <div style="text-align:center; padding:16px; background:rgba(255,255,255,0.05); border-radius:12px;">
+                            <div style="font-size:1.8rem; font-weight:800; color:#22c55e;" id="st-minutes">0</div>
+                            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">Minutes</div>
+                        </div>
+                        <div style="text-align:center; padding:16px; background:rgba(255,255,255,0.05); border-radius:12px;">
+                            <div style="font-size:1.8rem; font-weight:800; color:#a855f7;" id="st-tasks">0</div>
+                            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">Tasks Done</div>
+                        </div>
+                    </div>
+                    <div id="stats-bars"></div>
+                </div>
+                <div class="win-resize" onmousedown="ZenOS.WM.resize(event,'win-stats')"></div>
+            </div>
+            <!-- HABITS WINDOW -->
+            <div class="window" id="win-habits" style="top:150px; left:400px; width:380px;">
+                <div class="win-bar" onmousedown="ZenOS.WM.drag(event, 'win-habits')">
+                    <div class="win-title"><i class="ph-bold ph-check-circle"></i> Habits</div>
+                    <div class="win-ctrls">
+                        <button class="win-btn wb-min" onclick="ZenOS.WM.min('win-habits')"></button>
+                        <button class="win-btn wb-cls" onclick="ZenOS.WM.close('win-habits')"></button>
+                    </div>
+                </div>
+                <div class="win-content" style="padding:20px;">
+                    <div style="display:flex; gap:8px; margin-bottom:16px;">
+                        <input type="text" id="habitInput" class="auth-input" placeholder="New habit..." style="flex:1; margin:0; padding:10px 14px; font-size:0.85rem;">
+                        <button class="act-btn" onclick="ZenOS.Apps.Habits.add()" style="padding:10px 16px; white-space:nowrap;">+ Add</button>
+                    </div>
+                    <div id="habit-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+                </div>
+                <div class="win-resize" onmousedown="ZenOS.WM.resize(event,'win-habits')"></div>
+            </div>
         </div>
 
         <div class="dock">
@@ -485,6 +532,45 @@
     <div id="desktop-clock">
         <div id="clock-time">00:00:00</div>
         <div id="clock-date">Monday, Jan 1</div>
+    </div>
+
+    <!-- RIGHT-CLICK CONTEXT MENU -->
+    <div id="ctx-menu">
+        <div class="ctx-item" onclick="ZenOS.ContextMenu.close(); ZenOS.Apps.Notes.add('untitled', '[EMPTY FILE CONTENT]')"><i class="ph-bold ph-file-plus"></i> New File</div>
+        <div class="ctx-item" onclick="ZenOS.ContextMenu.close(); ZenOS.WM.open('terminal')"><i class="ph-bold ph-terminal-window"></i> Open Terminal</div>
+        <div class="ctx-item" onclick="ZenOS.ContextMenu.close(); ZenOS.WM.open('stats')"><i class="ph-bold ph-chart-bar"></i> View Stats</div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item" onclick="ZenOS.ContextMenu.close(); ZenOS.Apps.Audio.scene('rain', document.querySelectorAll('.env-card')[0])"><i class="ph-bold ph-cloud-rain"></i> Rain Scene</div>
+        <div class="ctx-item" onclick="ZenOS.ContextMenu.close(); ZenOS.Apps.Audio.scene('sea', document.querySelectorAll('.env-card')[1])"><i class="ph-bold ph-waves"></i> Sea Scene</div>
+        <div class="ctx-item" onclick="ZenOS.ContextMenu.close(); ZenOS.Apps.Audio.scene('forest', document.querySelectorAll('.env-card')[2])"><i class="ph-bold ph-tree"></i> Forest Scene</div>
+        <div class="ctx-item" onclick="ZenOS.ContextMenu.close(); ZenOS.Apps.Audio.scene('fire', document.querySelectorAll('.env-card')[3])"><i class="ph-bold ph-fire"></i> Fire Scene</div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item" onclick="ZenOS.ContextMenu.close(); ZenOS.Spotlight.open()"><i class="ph-bold ph-magnifying-glass"></i> Spotlight (Ctrl+K)</div>
+    </div>
+
+    <!-- SCREENSAVER -->
+    <div id="screensaver" onclick="ZenOS.Screensaver.deactivate()">
+        <canvas id="ss-canvas"></canvas>
+        <div id="ss-time">00:00</div>
+        <div id="ss-date">ZENSPACE OS</div>
+    </div>
+
+    <!-- SPOTLIGHT SEARCH -->
+    <div id="spotlight-overlay" onclick="if(event.target===this)ZenOS.Spotlight.close()">
+        <div class="spotlight-box">
+            <div class="spotlight-input-wrapper">
+                <i class="ph-bold ph-magnifying-glass spotlight-icon-prefix"></i>
+                <input type="text" id="spotlight-input" placeholder="Search apps, commands, files..." autocomplete="off"
+                    oninput="ZenOS.Spotlight.query(this.value)"
+                    onkeydown="ZenOS.Spotlight.nav(event)">
+            </div>
+            <div class="spotlight-results" id="spotlight-results"></div>
+            <div class="spotlight-footer">
+                <span>↑↓ Navigate</span>
+                <span>↵ Select</span>
+                <span>Esc Close</span>
+            </div>
+        </div>
     </div>
 
     <script>
