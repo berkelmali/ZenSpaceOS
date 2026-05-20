@@ -302,7 +302,7 @@
         </div>
 
         <div id="win-area">
-            <div class="window" id="win-timer" style="top:100px; left:300px; width:360px;">
+            <div class="window" id="win-timer" style="top:100px; left:300px; width:340px;">
                 <div class="win-bar" onmousedown="ZenOS.WM.drag(event, 'win-timer')">
                     <div class="win-title"><i class="ph-bold ph-clock"></i> Focus</div>
                     <div class="win-ctrls">
@@ -310,17 +310,7 @@
                         <button class="win-btn wb-cls" onclick="ZenOS.WM.close('win-timer')"></button>
                     </div>
                 </div>
-                <div class="win-content">
-                    <div class="timer-big" id="tDisplay">25:00</div>
-                    <div class="chip-grp">
-                        <div class="chip active" onclick="ZenOS.Apps.Timer.set(25, this)">Focus</div>
-                        <div class="chip" onclick="ZenOS.Apps.Timer.set(5, this)">Short</div>
-                        <div class="chip" onclick="ZenOS.Apps.Timer.set(15, this)">Long</div>
-                    </div>
-                    <button class="act-btn" id="tBtn" onclick="ZenOS.Apps.Timer.toggle()">ENGAGE (SPACE)</button>
-                    <div style="margin-top:20px; font-size:0.8rem; color:var(--text-muted); text-align:center;">Sessions: <span id="statSess" style="color:#fff; font-weight:700;">0</span></div>
-                </div>
-            </div>
+
 
             <div class="window" id="win-kanban" style="top:120px; left:700px; width:500px; height:400px;">
                 <div class="win-bar" onmousedown="ZenOS.WM.drag(event, 'win-kanban')">
@@ -721,6 +711,20 @@ const ZenOS = {
             const move = (ev) => { w.style.left = ev.pageX - sx + 'px'; w.style.top = ev.pageY - sy + 'px'; }
             document.addEventListener('mousemove', move);
             document.onmouseup = () => { document.removeEventListener('mousemove', move); document.onmouseup = null; }
+        },
+        resize: (e, id) => {
+            e.preventDefault(); e.stopPropagation();
+            const w = document.getElementById(id);
+            ZenOS.WM.focus(id);
+            const startX = e.clientX, startY = e.clientY;
+            const startW = w.offsetWidth, startH = w.offsetHeight;
+            const move = (ev) => {
+                const nw = Math.max(280, startW + ev.clientX - startX);
+                const nh = Math.max(180, startH + ev.clientY - startY);
+                w.style.width = nw + 'px'; w.style.height = nh + 'px';
+            };
+            document.addEventListener('mousemove', move);
+            document.onmouseup = () => { document.removeEventListener('mousemove', move); document.onmouseup = null; };
         }
     },
 
@@ -765,10 +769,7 @@ const ZenOS = {
                     }, 1000);
                 }
             },
-            disp: () => {
-                const m = Math.floor(ZenOS.state.timer.val/60), s = ZenOS.state.timer.val%60;
-                document.getElementById('tDisplay').innerText = `${m}:${s<10?'0'+s:s}`;
-            }
+
         },
         Kanban: {
             addPrompt: () => {
@@ -1497,6 +1498,33 @@ fetchDynamicWeather: async () => {
         }
     }
 };
+
+
+    // --- CLOCK ---
+    Clock: {
+        _id: null,
+        init: () => {
+            ZenOS.Clock.tick();
+            ZenOS.Clock._id = setInterval(ZenOS.Clock.tick, 1000);
+        },
+        tick: () => {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2,'0');
+            const m = String(now.getMinutes()).padStart(2,'0');
+            const s = String(now.getSeconds()).padStart(2,'0');
+            const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            const dateStr = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`;
+            const t = document.getElementById('clock-time');
+            const d = document.getElementById('clock-date');
+            const ssT = document.getElementById('ss-time');
+            const ssD = document.getElementById('ss-date');
+            if(t) t.innerText = `${h}:${m}:${s}`;
+            if(d) d.innerText = dateStr;
+            if(ssT) ssT.innerText = `${h}:${m}`;
+            if(ssD) ssD.innerText = dateStr.toUpperCase();
+        }
+    },
 
 // Start the System
 window.onload = ZenOS.Boot;
