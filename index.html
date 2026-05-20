@@ -335,17 +335,39 @@
                     <div class="win-ctrls"><button class="win-btn wb-min" onclick="ZenOS.WM.min('win-studio')"></button><button class="win-btn wb-cls" onclick="ZenOS.WM.close('win-studio')"></button></div>
                 </div>
                 <div class="win-content">
-                    <div class="env-grid">
-                        <div class="env-card active" onclick="ZenOS.Apps.Audio.scene('rain', this)"><i class="ph-fill ph-cloud-rain"></i> Rain</div>
-                        <div class="env-card" onclick="ZenOS.Apps.Audio.scene('sea', this)"><i class="ph-fill ph-waves"></i> Sea</div>
-                        <div class="env-card" onclick="ZenOS.Apps.Audio.scene('forest', this)"><i class="ph-fill ph-tree"></i> Forest</div>
-                        <div class="env-card" onclick="ZenOS.Apps.Audio.scene('fire', this)"><i class="ph-fill ph-fire"></i> Fire</div>
+                    <div class="studio-tabs">
+                        <div class="studio-tab active" onclick="ZenOS.Theme.switchTab(this,'audio-panel')">🎵 Audio</div>
+                        <div class="studio-tab" onclick="ZenOS.Theme.switchTab(this,'theme-panel')">🎨 Theme</div>
                     </div>
-                    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
-                        <i class="ph-fill ph-speaker-high" id="muteIcon" style="cursor:pointer;" onclick="ZenOS.Apps.Audio.mute()"></i>
-                        <input type="range" class="vol-slider" min="0" max="100" value="50" oninput="ZenOS.Apps.Audio.vol(this.value)">
+                    <div id="audio-panel" class="studio-panel active">
+                        <div class="env-grid">
+                            <div class="env-card active" onclick="ZenOS.Apps.Audio.scene('rain', this)"><i class="ph-fill ph-cloud-rain"></i> Rain</div>
+                            <div class="env-card" onclick="ZenOS.Apps.Audio.scene('sea', this)"><i class="ph-fill ph-waves"></i> Sea</div>
+                            <div class="env-card" onclick="ZenOS.Apps.Audio.scene('forest', this)"><i class="ph-fill ph-tree"></i> Forest</div>
+                            <div class="env-card" onclick="ZenOS.Apps.Audio.scene('fire', this)"><i class="ph-fill ph-fire"></i> Fire</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+                            <i class="ph-fill ph-speaker-high" id="muteIcon" style="cursor:pointer;" onclick="ZenOS.Apps.Audio.mute()"></i>
+                            <input type="range" class="vol-slider" min="0" max="100" value="50" oninput="ZenOS.Apps.Audio.vol(this.value)">
+                        </div>
+                        <div style="font-size:0.72rem; color:#888; margin-top:10px;">M = Mute | Ctrl+K = Spotlight</div>
                     </div>
-                    <div style="font-size:0.75rem; color:#888; margin-top:10px;">Shortcuts: 'M' (Mute), '+/-' (Vol)</div>
+                    <div id="theme-panel" class="studio-panel">
+                        <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:6px;">Accent Color</p>
+                        <div class="theme-swatches">
+                            <div class="theme-swatch active" style="background:#3b82f6" onclick="ZenOS.Theme.set('#3b82f6',this)" title="Blue"></div>
+                            <div class="theme-swatch" style="background:#8b5cf6" onclick="ZenOS.Theme.set('#8b5cf6',this)" title="Purple"></div>
+                            <div class="theme-swatch" style="background:#ec4899" onclick="ZenOS.Theme.set('#ec4899',this)" title="Pink"></div>
+                            <div class="theme-swatch" style="background:#10b981" onclick="ZenOS.Theme.set('#10b981',this)" title="Green"></div>
+                            <div class="theme-swatch" style="background:#f59e0b" onclick="ZenOS.Theme.set('#f59e0b',this)" title="Amber"></div>
+                            <div class="theme-swatch" style="background:#ef4444" onclick="ZenOS.Theme.set('#ef4444',this)" title="Red"></div>
+                            <div class="theme-swatch" style="background:#06b6d4" onclick="ZenOS.Theme.set('#06b6d4',this)" title="Cyan"></div>
+                        </div>
+                        <div class="theme-custom-row">
+                            <input type="color" id="theme-custom-input" value="#3b82f6" oninput="ZenOS.Theme.set(this.value,null)">
+                            <span style="font-size:0.78rem; color:var(--text-muted);">Custom color</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1144,7 +1166,9 @@ Coach: {
                 const d = ZenOS.Apps.Habits._data();
                 if(d.habits.includes(name)) { ZenOS.UI.toast('Habit already exists'); return; }
                 d.habits.push(name); ZenOS.Apps.Habits._save(d); inp.value = '';
-                ZenOS.Apps.Habits.render(); ZenOS.UI.toast('Habit added!');
+                ZenOS.Apps.Habits.render();
+        const savedTheme = localStorage.getItem('zen_theme');
+        if(savedTheme) ZenOS.Theme.set(savedTheme, null, true); ZenOS.UI.toast('Habit added!');
             },
             toggle: (name) => {
                 const d = ZenOS.Apps.Habits._data();
@@ -1720,6 +1744,26 @@ fetchDynamicWeather: async () => {
             else if(e.key === 'Escape') { ZenOS.Spotlight.close(); }
         },
         exec: (i) => { const item = ZenOS.Spotlight._items[i]; if(item) { ZenOS.Spotlight.close(); item.action(); } }
+    },
+
+
+    // --- THEME PICKER ---
+    Theme: {
+        switchTab: (tabEl, panelId) => {
+            document.querySelectorAll('.studio-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.studio-panel').forEach(p => p.classList.remove('active'));
+            tabEl.classList.add('active');
+            document.getElementById(panelId)?.classList.add('active');
+        },
+        set: (color, swatchEl, silent) => {
+            document.documentElement.style.setProperty('--accent', color);
+            document.documentElement.style.setProperty('--accent-glow', color + '80');
+            if(!silent) localStorage.setItem('zen_theme', color);
+            document.querySelectorAll('.theme-swatch').forEach(s => s.classList.remove('active'));
+            if(swatchEl) swatchEl.classList.add('active');
+            const ci = document.getElementById('theme-custom-input');
+            if(ci && !silent) ci.value = color;
+        }
     },
 
 // Start the System
