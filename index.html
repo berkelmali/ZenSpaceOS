@@ -312,7 +312,29 @@
                         <button class="win-btn wb-cls" onclick="ZenOS.WM.close('win-timer')"></button>
                     </div>
                 </div>
-
+                <div class="win-content">
+                    <div class="timer-ring-wrap">
+                        <svg class="timer-ring-svg" width="170" height="170" viewBox="0 0 170 170">
+                            <circle class="timer-ring-bg" cx="85" cy="85" r="74"/>
+                            <circle class="timer-ring-prog" id="ringProg" cx="85" cy="85" r="74"
+                                stroke-dasharray="464.96" stroke-dashoffset="0"/>
+                        </svg>
+                        <div class="timer-ring-label">
+                            <div class="timer-big" id="tDisplay">25:00</div>
+                            <small id="tPhaseLabel">FOCUS</small>
+                        </div>
+                    </div>
+                    <div class="chip-grp">
+                        <div class="chip active" onclick="ZenOS.Apps.Timer.set(25, this)">Focus</div>
+                        <div class="chip" onclick="ZenOS.Apps.Timer.set(5, this)">Short</div>
+                        <div class="chip" onclick="ZenOS.Apps.Timer.set(15, this)">Long</div>
+                        <div class="chip" onclick="ZenOS.Apps.Timer.set(90, this)">Deep</div>
+                    </div>
+                    <button class="act-btn" id="tBtn" onclick="ZenOS.Apps.Timer.toggle()">ENGAGE (SPACE)</button>
+                    <div style="margin-top:16px; font-size:0.78rem; color:var(--text-muted); text-align:center;">Sessions: <span id="statSess" style="color:#fff; font-weight:700;">0</span></div>
+                </div>
+                <div class="win-resize" onmousedown="ZenOS.WM.resize(event,'win-timer')"></div>
+            </div>
 
             <div class="window" id="win-kanban" style="top:120px; left:700px; width:500px; height:400px;">
                 <div class="win-bar" onmousedown="ZenOS.WM.drag(event, 'win-kanban')">
@@ -458,6 +480,12 @@
     </div>
 
     <div id="toast"><i class="ph-fill ph-info"></i> <span id="toastMsg">Ready</span></div>
+
+    <!-- DESKTOP CLOCK -->
+    <div id="desktop-clock">
+        <div id="clock-time">00:00:00</div>
+        <div id="clock-date">Monday, Jan 1</div>
+    </div>
 
     <script>
         
