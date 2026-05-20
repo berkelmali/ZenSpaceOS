@@ -1168,8 +1168,7 @@ Coach: {
                 if(d.habits.includes(name)) { ZenOS.UI.toast('Habit already exists'); return; }
                 d.habits.push(name); ZenOS.Apps.Habits._save(d); inp.value = '';
                 ZenOS.Apps.Habits.render();
-        const savedTheme = localStorage.getItem('zen_theme');
-        if(savedTheme) ZenOS.Theme.set(savedTheme, null, true); ZenOS.UI.toast('Habit added!');
+                ZenOS.UI.toast('Habit added!');
             },
             toggle: (name) => {
                 const d = ZenOS.Apps.Habits._data();
@@ -1665,9 +1664,7 @@ fetchDynamicWeather: async () => {
                 }); requestAnimationFrame(loop);
             } loop();
         }
-    }
-};
-
+    },
 
     // --- CLOCK ---
     Clock: {
@@ -1829,7 +1826,9 @@ fetchDynamicWeather: async () => {
             const ci = document.getElementById('theme-custom-input');
             if(ci && !silent) ci.value = color;
         }
-    },
+    }
+
+};
 
 // Start the System
 window.onload = ZenOS.Boot;
